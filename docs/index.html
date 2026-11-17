@@ -73,6 +73,8 @@
       <p><b id="fname"></b> <span class="mut" id="fmeta"></span></p>
       <textarea id="text" aria-label="File contents"></textarea>
       <div class="row"><button id="save" class="main">Save</button><button id="reload">Reload</button><span class="grow"></span><button id="delete" class="del">Delete</button></div>
+      <p class="mut" id="histhead" hidden>History. Tap a version to load it, then Save to restore it.</p>
+      <ul id="history"></ul>
     </div>
     <p class="note" id="real-note">Each save is a commit in the repo. If the file changed elsewhere in the meantime, saving asks you to reload first. This page can edit any file in the repos you chose.</p>
     <p class="note" id="demo-note" hidden>Demo: these files are kept only in this browser. Nothing is stored remotely. <button id="reset" class="link">Reset the demo files</button></p>
@@ -143,7 +145,25 @@ async function edit(path, li) {
     $('editor').hidden = false;
     document.querySelectorAll('#files li').forEach((e) => e.classList.toggle('on', e === li));
     say('');
+    showHistory(path);
   } catch (e) { say(e.message); }
+}
+
+async function showHistory(path) {
+  const log = await gh.history($('repo').value, path).catch(() => []);
+  $('histhead').hidden = !log.length;
+  $('history').replaceChildren(...log.slice(0, 8).map((c, i) => {
+    const li = document.createElement('li');
+    const when = c.date ? new Date(c.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    li.append(Object.assign(document.createElement('span'), { textContent: c.message || '(no message)' }), Object.assign(document.createElement('span'), { textContent: i ? when : `${when}, now` }));
+    li.onclick = async () => {
+      const old = await gh.read($('repo').value, path, c.sha);
+      if (!old) return say('That version could not be read.');
+      $('text').value = old.text;
+      say(i ? 'Loaded an older version. Press Save to restore it.' : 'This is the current version.');
+    };
+    return li;
+  }));
 }
 
 const fail = (e) => say(e instanceof Conflict ? 'Changed elsewhere. Press Reload, then save again.' : e.message);

@@ -8,6 +8,9 @@
 //   const f = await gh.read(repo, 'notes.json');          // { text, sha, etag } or null
 //   const g = await gh.read(repo, 'notes.json', undefined, f.etag);   // { notModified: true } when unchanged, and free of rate limit
 //   const names = await gh.list(repo, '');                // [{ name, path, type, sha, size }] of the app's folder
+//   await gh.writeMany(repo, { 'a.json': '{}', 'old.txt': null }, { message });   // several files in ONE commit, null deletes
+//   const log = await gh.history(repo, 'a.json');         // [{ sha, message, author, date }] newest first; read(repo, path, sha) gives that version
+//   const { head } = await gh.head(repo);                 // the branch's current commit; gh.changes(repo, oldHead) lists what changed since
 //   await gh.write(repo, 'notes.json', text, f?.sha);     // returns the new sha; throws Conflict on a stale sha
 //   await gh.remove(repo, 'notes.json', f.sha);           // true, or false if already gone
 
@@ -131,6 +134,25 @@ export function createClient({ clientId, relay, appSlug, name = 'gh-store', fold
       return { full: j.full_name, branch: j.default_branch };
     },
 
+    // Creates a private repo for the person from a template repo ("owner/name", marked as a template on GitHub), with all its files.
+    // Needs the "Repository creation" permission. Resolves when the new repo has its first commit, which can take a few seconds.
+    async createRepoFromTemplate(template, name, { description = '', isPrivate = true } = {}) {
+      const t = await api.token();
+      if (!t) throw new Error('Not signed in');
+      const r = await gh(t, `/repos/${template}/generate`, { method: 'POST', body: JSON.stringify({ name, description, private: isPrivate, include_all_branches: false }) });
+      if (r.status === 422) throw new Error(`A repo called ${name} already exists, or the name is not allowed.`);
+      if (r.status === 403) throw new Error('This app is not allowed to create repos. Give the GitHub App the "Repository creation" permission.');
+      if (r.status === 404) throw new Error(`${template} was not found, or is not a template repo.`);
+      if (!r.ok) throw new Error(`GitHub ${r.status}`);
+      const j = await r.json();
+      for (let i = 0; i < 20; i++) {
+        const ref = await gh(t, `/repos/${j.full_name}/git/ref/heads/${encodeURIComponent(j.default_branch)}`);
+        if (ref.ok) break;
+        await new Promise((res) => setTimeout(res, 500));
+      }
+      return { full: j.full_name, branch: j.default_branch };
+    },
+
     // { text, sha, etag } or null when the file does not exist. Pass the etag of an earlier read to get
     // { notModified: true, etag } instead when nothing changed; GitHub does not count that against the rate limit.
     async read(repo, path, branch, etag) {
@@ -163,6 +185,69 @@ export function createClient({ clientId, relay, appSlug, name = 'gh-store', fold
       if (r.status === 409 || r.status === 422) throw new Conflict();
       if (!r.ok) throw new Error(`GitHub ${r.status}`);
       return (await r.json()).content.sha;
+    },
+
+    // Several files in ONE commit: files is { path: text, path2: null } (null deletes). Returns { commit } (the new commit sha).
+    // With { base } (a commit sha from head() or an earlier writeMany) it only succeeds if the branch is still at base, else Conflict.
+    // Without base it commits on top of the branch's current head, so files you list replace what is there, but files you do not list stay as they are.
+    async writeMany(repo, files, { branch, message = 'Update', base } = {}) {
+      const t = await api.token();
+      if (!t) throw new Error('Not signed in');
+      const br = branch || (await (await gh(t, `/repos/${repo}`)).json()).default_branch;
+      const call = async (path, method = 'GET', body) => {
+        const r = await gh(t, `/repos/${repo}${path}`, { method, ...(body ? { body: JSON.stringify(body) } : {}) });
+        if (!r.ok && !(method === 'PATCH' && (r.status === 409 || r.status === 422))) throw new Error(`GitHub ${r.status}`);
+        return r;
+      };
+      const entries = Object.entries(files).map(([p, text]) => ({ path: at(p), mode: '100644', type: 'blob', ...(text === null ? { sha: null } : { content: text }) }));
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const head = (await (await call(`/git/ref/heads/${encodeURIComponent(br)}`)).json()).object.sha;
+        if (base && base !== head) throw new Conflict();
+        const baseTree = (await (await call(`/git/commits/${head}`)).json()).tree.sha;
+        const tree = await (await call('/git/trees', 'POST', { base_tree: baseTree, tree: entries })).json();
+        const commit = await (await call('/git/commits', 'POST', { message, tree: tree.sha, parents: [head] })).json();
+        const up = await call(`/git/refs/heads/${encodeURIComponent(br)}`, 'PATCH', { sha: commit.sha });
+        if (up.ok) return { commit: commit.sha };
+        if (base) throw new Conflict();
+      }
+      throw new Conflict();
+    },
+
+    // The commits that touched a file, newest first: [{ sha, message, author, date }]. Pass a sha to read() to get that version.
+    async history(repo, path, { branch, limit = 30 } = {}) {
+      const t = await api.token();
+      const q = new URLSearchParams({ path: at(path), per_page: String(limit), ...(branch ? { sha: branch } : {}) });
+      const r = await gh(t, `/repos/${repo}/commits?${q}`);
+      if (r.status === 404 || r.status === 409) return [];
+      if (!r.ok) throw new Error(`GitHub ${r.status}`);
+      return (await r.json()).map((c) => ({ sha: c.sha, message: c.commit.message.split('\n')[0], author: c.commit.author?.name ?? c.author?.login ?? '', date: c.commit.author?.date ?? '' }));
+    },
+
+    // The branch's current commit: { sha, etag }. With the etag of an earlier call: { notModified: true, etag } when nothing changed (free).
+    async head(repo, branch, etag) {
+      const t = await api.token();
+      const br = branch || (await (await gh(t, `/repos/${repo}`)).json()).default_branch;
+      const r = await gh(t, `/repos/${repo}/git/ref/heads/${encodeURIComponent(br)}`, etag ? { headers: { 'If-None-Match': etag } } : {});
+      if (r.status === 304) return { notModified: true, etag };
+      if (!r.ok) throw new Error(`GitHub ${r.status}`);
+      return { sha: (await r.json()).object.sha, etag: r.headers.get('ETag') };
+    },
+
+    // What changed since a commit: { head, files: [{ path, status }] }, status 'added' | 'modified' | 'removed'. Only files under the client's folder, with paths relative to it.
+    // GitHub lists at most 300 files here; truncated is true when there may be more.
+    async changes(repo, since, branch) {
+      const t = await api.token();
+      const br = branch || (await (await gh(t, `/repos/${repo}`)).json()).default_branch;
+      const r = await gh(t, `/repos/${repo}/compare/${since}...${encodeURIComponent(br)}`);
+      if (r.status === 404) throw new Error('That commit is not on the branch any more. Read everything again.');
+      if (!r.ok) throw new Error(`GitHub ${r.status}`);
+      const j = await r.json();
+      const prefix = at('');
+      const pre = prefix ? `${prefix}/` : '';
+      const files = (j.files ?? [])
+        .filter((f) => f.filename.startsWith(pre))
+        .map((f) => ({ path: f.filename.slice(pre.length), status: f.status === 'removed' ? 'removed' : f.status === 'added' ? 'added' : 'modified' }));
+      return { head: j.commits?.length ? j.commits[j.commits.length - 1].sha : since, files, truncated: (j.files ?? []).length >= 300 };
     },
 
     // Deletes the file. Needs the current sha; a stale one throws Conflict. Returns false if it was already gone.

@@ -17,6 +17,10 @@ const [repo] = await gh.repos();               // repos the app is installed on:
 const f = await gh.read(repo.full, 'data.json');            // { text, sha, etag } or null
 const g = await gh.read(repo.full, 'data.json', undefined, f.etag);   // { notModified: true } if unchanged
 const files = await gh.list(repo.full, '');                 // [{ name, path, type, sha, size }]
+await gh.writeMany(repo.full, { 'a.json': a, 'old.json': null }, { message: 'Save' });  // one commit, null deletes
+const log = await gh.history(repo.full, 'a.json');          // [{ sha, message, author, date }], newest first
+const before = await gh.read(repo.full, 'a.json', log[1].sha);   // the file as it was then
+const { files: changed } = await gh.changes(repo.full, lastSeenSha);  // only what is new
 await gh.write(repo.full, 'data.json', text, f?.sha);       // returns the new sha
 await gh.remove(repo.full, 'data.json', f.sha);             // delete
 ```

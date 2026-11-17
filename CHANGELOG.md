@@ -3,6 +3,17 @@
 Versions follow [semver](https://semver.org/). `package.json` holds the version, and the Worker reports it at `GET /`.
 While the version is 0.x, a minor bump may change the client API. Pin a tag or commit in your app.
 
+## 0.2.0
+
+Client additions. Nothing removed or renamed.
+
+- **`writeMany(repo, { path: text | null }, { message, base })`:** several files in one commit, deletes included, through the Git data API. With `base` (a commit sha) it fails with `Conflict` if the branch moved, which gives you a check across all the files. Without it, it starts again on the new head.
+- **`history(repo, path)`:** the commits that touched a file. Pass a commit sha as the branch argument of `read()` to get that version.
+- **`head(repo, branch?, etag?)` and `changes(repo, sinceSha)`:** the branch's current commit with a free ETag check, and the files that changed since a commit.
+- **`createRepoFromTemplate(template, name)`:** a private repo made from a template repo, resolved once it has its first commit.
+- **Demo backend:** the same calls, with a commit log behind them.
+- **Example page:** shows a file's history and loads an old version for restoring.
+
 ## 0.1.0
 
 First tagged release.

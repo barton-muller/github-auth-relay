@@ -22,7 +22,7 @@ One GitHub App and one relay serve every site you list. All pages under one GitH
    [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/barton-muller/pages-storage)
 3. **Add it to your app.**
    ```
-   npm install git+https://github.com/barton-muller/pages-storage.git#v0.1.0
+   npm install git+https://github.com/barton-muller/pages-storage.git#v0.2.0
    ```
    ```js
    import { createClient } from 'pages-storage/client';
@@ -34,6 +34,8 @@ One GitHub App and one relay serve every site you list. All pages under one GitH
    const [repo] = await gh.repos();                  // repos they installed the app on
    const file = await gh.read(repo.full, 'data.json');            // { text, sha, etag } or null
    await gh.write(repo.full, 'data.json', text, file?.sha);       // throws Conflict if it changed meanwhile
+   await gh.writeMany(repo.full, { 'a.json': a, 'b.json': b });  // several files in one commit
+   const versions = await gh.history(repo.full, 'data.json');     // older versions, to restore
    ```
    Or copy [`client/ghstore.js`](client/ghstore.js), which has no dependencies. To build without GitHub at all, use `createDemoClient()` from `pages-storage/client/demo`: same calls, files kept in the browser.
 
@@ -54,11 +56,11 @@ The **[full guide](docs/GUIDE.md)** says what this is good for, how it works in 
 
 ## Versions
 
-[Semver](https://semver.org/), tagged `v0.1.0` and so on. See the [changelog](CHANGELOG.md). Before 1.0 a minor version may change the client API, so pin a tag or commit. `GET /` on your relay shows which version it runs.
+[Semver](https://semver.org/), tagged `v0.2.0` and so on. See the [changelog](CHANGELOG.md). Before 1.0 a minor version may change the client API, so pin a tag or commit. `GET /` on your relay shows which version it runs.
 
 ## Test
 
-`npm test` runs 26 checks on the relay, 22 on the client and 21 on the demo backend. They use a pretend GitHub and need Node 18 or newer, no network.
+`npm test` runs 26 checks on the relay, 32 on the client and 28 on the demo backend. They use a pretend GitHub and need Node 18 or newer, no network.
 
 ## Publishing the example
 

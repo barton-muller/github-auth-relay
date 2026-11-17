@@ -100,7 +100,7 @@ The button copies this repo into your GitHub account, deploys it with Cloudflare
 
 Nothing personal is stored in the repo copy. Later pushes to your copy redeploy it and the settings stay. Change a setting in the Worker's *Settings, Variables and Secrets*, and it applies at once.
 
-The deploy gives you the relay's address, such as `https://pages-storage.<you>.workers.dev`. Open it. You should see `{"name":"pages-storage","version":"0.1.0","configured":true}`. `configured: false` means a setting is missing.
+The deploy gives you the relay's address, such as `https://pages-storage.<you>.workers.dev`. Open it. You should see `{"name":"pages-storage","version":"0.2.0","configured":true}`. `configured: false` means a setting is missing.
 
 Now go back to the GitHub App and set **Setup URL** to `<relay address>/return`.
 
@@ -126,7 +126,7 @@ curl -X POST <relay address>/token -H 'Origin: https://you.github.io' -H 'Conten
 Three values go into the app, and all are public: the Client ID, the relay address and the app slug.
 
 ```
-npm install git+https://github.com/barton-muller/pages-storage.git#v0.1.0
+npm install git+https://github.com/barton-muller/pages-storage.git#v0.2.0
 ```
 ```js
 import { createClient, Conflict } from 'pages-storage/client';
@@ -158,6 +158,11 @@ const sha = await gh.write('you/data', 'data.json', JSON.stringify(data), file?.
 | `list(repo, dir?, branch?)` | The entries of a folder: `{ name, path, type, sha, size }`. |
 | `write(repo, path, text, sha?, branch?, message?)` | Creates or replaces a file and returns its new `sha`. Pass the `sha` of the version you read. A stale one throws `Conflict`. |
 | `remove(repo, path, sha, branch?)` | Deletes a file. The old content stays in git history. |
+| `writeMany(repo, { path: text \| null }, { message?, base?, branch? })` | Several files in **one commit**, with `null` deleting a file. Returns `{ commit }`. With `base` (a commit sha from `head()` or an earlier `writeMany`) it throws `Conflict` if the branch has moved, so nothing is half-written. Without `base` it commits on top of whatever the branch is now. Use it to save related files together and to cut commit noise. |
+| `history(repo, path, { limit?, branch? })` | The commits that touched a file, newest first: `{ sha, message, author, date }`. Pass a `sha` as the branch argument of `read()` to get the file as it was then. Gives you undo, restore and "who changed this". |
+| `head(repo, branch?, etag?)` | The branch's current commit as `{ sha, etag }`. Pass the `etag` of an earlier call to get `{ notModified: true }`, which GitHub does not count against the rate limit. |
+| `changes(repo, sinceSha, branch?)` | `{ head, files: [{ path, status }] }`: what changed since a commit, limited to the client's folder. Good for fetching only what is new. GitHub lists at most 300 files; `truncated` says if there may be more. |
+| `createRepoFromTemplate(template, name, { description?, isPrivate? })` | Makes a private repo from a template repo (`"owner/name"`, marked as a template on GitHub), with all its files, and resolves once it has its first commit. Needs the *Repository creation* permission. Use it so new users start with your app's starter files. |
 
 Options of `createClient`:
 
@@ -191,7 +196,7 @@ Options of `createClient`:
 
 ## Limits
 
-- Around 1 MB per file through the Contents API. Keep data as a few JSON or text files.
+- Around 1 MB per file through `read` and `write`, which use the Contents API. `writeMany` goes through the Git data API, which GitHub documents with a much higher per-file limit, but `read` still uses the 1 MB route, and I have not tested large files. Keep data as a few JSON or text files.
 - One request per file. No transactions across files.
 - 5,000 requests an hour per user. Plenty for one person, and conditional reads (`etag`) cost nothing.
 - Reads can lag a few seconds behind a write because of GitHub's caching.
@@ -211,7 +216,7 @@ Options of `createClient`:
 
 ## Updating and versions
 
-- The repo follows [semver](https://semver.org/) with tags (`v0.1.0`) and a [changelog](../CHANGELOG.md). Before 1.0, a minor version may change the client API, so pin a tag or commit in your app.
+- The repo follows [semver](https://semver.org/) with tags (`v0.2.0`) and a [changelog](../CHANGELOG.md). Before 1.0, a minor version may change the client API, so pin a tag or commit in your app.
 - **Client:** change the tag in `package.json` and run `npm install`. Read the changelog first.
 - **Relay:** your copy of the repo is separate. To update, pull the new code into it (on GitHub, *Sync* if it is a fork, or copy files) and push. Workers Builds redeploys, and `GET /` on the relay shows the new version.
 - The relay and the client are meant to be compatible within one minor version. A newer client against an older relay works unless the changelog says otherwise.
