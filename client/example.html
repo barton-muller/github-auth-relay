@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub storage example</title>
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; max-width: 34rem; margin: 2rem auto; padding: 0 16px; }
+  textarea, select, button { font: inherit; width: 100%; box-sizing: border-box; margin: .25rem 0; padding: .5rem; }
+  .row { display: flex; gap: .5rem; } .row > * { flex: 1; }
+  #msg { color: #555; min-height: 1.5em; }
+</style>
+</head>
+<body>
+<h1>GitHub storage example</h1>
+<p id="msg"></p>
+<div id="out" hidden>
+  <p>Signed in as <b id="who"></b>.</p>
+  <label>Repo <select id="repo"></select></label>
+  <a id="install" href="#">Choose repos</a>
+  <label>Your text, saved as <code>example.txt</code>
+    <textarea id="text" rows="5"></textarea></label>
+  <div class="row"><button id="load">Load</button><button id="save">Save</button></div>
+  <button id="out-btn">Sign out</button>
+</div>
+<div id="in" hidden><button id="signin">Sign in with GitHub</button></div>
+
+<script type="module">
+import { createClient, Conflict } from './ghstore.js';
+
+// Fill in your three public values. Serve this page from an origin listed in the relay's ALLOWED_ORIGINS.
+const gh = createClient({
+  clientId: 'Iv23li69aGBxYokv1i8f',
+  relay: 'https://github-auth-relay.barton-fna.workers.dev',
+  appSlug: 'remote-storage-bm',
+});
+const PATH = 'example.txt';
+const $ = (id) => document.getElementById(id);
+const say = (t) => ($('msg').textContent = t);
+let sha;
+
+async function load() {
+  const f = await gh.read($('repo').value, PATH);
+  sha = f?.sha;
+  $('text').value = f?.text ?? '';
+  say(f ? 'Loaded.' : 'No file yet. Type something and save.');
+}
+
+$('signin').onclick = () => gh.signIn();
+$('out-btn').onclick = () => { gh.signOut(); location.reload(); };
+$('load').onclick = () => load().catch((e) => say(e.message));
+$('save').onclick = async () => {
+  try {
+    sha = await gh.write($('repo').value, PATH, $('text').value, sha);
+    say('Saved.');
+  } catch (e) {
+    say(e instanceof Conflict ? 'Changed elsewhere. Press Load, then save again.' : e.message);
+  }
+};
+
+try { await gh.handleReturn(); } catch (e) { say(e.message); }
+if (!gh.signedIn()) $('in').hidden = false;
+else {
+  $('out').hidden = false;
+  $('who').textContent = gh.login();
+  $('install').href = gh.installUrl();
+  const repos = await gh.repos().catch((e) => (say(e.message), []));
+  $('repo').replaceChildren(...repos.map((r) => new Option(r.full, r.full)));
+  if (repos.length) await load().catch((e) => say(e.message));
+  else say('Install the app on a repo first (Choose repos).');
+}
+</script>
+</body>
+</html>

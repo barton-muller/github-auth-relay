@@ -102,9 +102,11 @@ The site needs three public values: the GitHub App's Client ID, the relay's addr
 
 The sign-in token is stored per origin by the browser, so a site on another domain asks the person to sign in once more. Sites on one origin can share it.
 
-## What is and is not in this repo
+## Client code
 
-This repo is the server side only: the Worker, the test, a setup guide and an example page. The browser side (PKCE, redirect, token refresh, repo picker) lives in Go Find Yourself, in [`src/auth.ts`](https://github.com/barton-muller/find-your-self/blob/main/src/auth.ts) and [`src/sync.ts`](https://github.com/barton-muller/find-your-self/blob/main/src/sync.ts). It is about 200 lines with no dependencies except a key-value store. Copy it, or ask for it to be split out as a package.
+The `client/` folder has the browser side: `ghstore.js` and a one-page example that stores a string. See [client/README.md](client/README.md).
+
+Go Find Yourself has its own, app-specific version in [`src/auth.ts`](https://github.com/barton-muller/find-your-self/blob/main/src/auth.ts) and [`src/sync.ts`](https://github.com/barton-muller/find-your-self/blob/main/src/sync.ts).
 
 ## Security notes
 
@@ -116,7 +118,7 @@ This repo is the server side only: the Worker, the test, a setup guide and an ex
 
 ## Test
 
-`npm test` (or `node test.mjs`) runs 20 checks with a pretend GitHub. It needs Node 18 or newer and no network.
+`npm test` runs 20 checks on the relay (`test.mjs`) and 12 on the client (`client/test.mjs`), both with a pretend GitHub. It needs Node 18 or newer and no network.
 
 ## Licence
 
