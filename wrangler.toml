@@ -1,4 +1,4 @@
-name = "github-auth-relay"
+name = "pages-storage"
 main = "index.js"
 compatibility_date = "2025-01-01"
 

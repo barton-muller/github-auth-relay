@@ -83,11 +83,11 @@ npx wrangler secret put ALLOWED_ORIGINS
 npx wrangler deploy
 ```
 
-The deploy gives you the relay's address, such as `https://github-auth-relay.<you>.workers.dev`. Open it in a browser. `{"error":"method_not_allowed"}` means it is running.
+The deploy gives you the relay's address, such as `https://pages-storage.<you>.workers.dev`. Open it in a browser. `{"error":"method_not_allowed"}` means it is running.
 
 To check the settings, send a POST from an allowed origin (a computer is easiest):
 ```
-curl -X POST https://github-auth-relay.<you>.workers.dev/token -H 'Origin: https://<you>.github.io' -H 'Content-Type: application/json' -d '{}'
+curl -X POST https://pages-storage.<you>.workers.dev/token -H 'Origin: https://<you>.github.io' -H 'Content-Type: application/json' -d '{}'
 ```
 `{"error":"bad_request"}` is the right answer. `relay_not_configured` means the Client ID or the secret is missing in the deployed Worker, so check both in the Worker's *Settings, Variables and Secrets*. `origin_not_allowed` means the origin is not in `ALLOWED_ORIGINS`.
 
