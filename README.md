@@ -10,9 +10,13 @@ It is built to be shared:
 - **Return after install.** `GET /return` sends people back to whichever site started the install, so you do not need a home page per domain.
 - **Repos as storage.** The signed-in token has Contents access to the repos the person picked, so each site can keep its data in the person's own private repo.
 
+![How it works: the site, GitHub, the relay and the person's own repo](docs/how-it-works.svg)
+
 Used by [Go Find Yourself](https://github.com/barton-muller/find-your-self), a trip planner that stores its plan this way.
 
 ## How it works
+
+The diagram above shows the flow in four steps:
 
 1. The site sends the person to github.com to approve (with PKCE).
 2. GitHub sends them back to the site with a one-time code.
@@ -118,7 +122,7 @@ Go Find Yourself has its own, app-specific version in [`src/auth.ts`](https://gi
 
 ## Test
 
-`npm test` runs 20 checks on the relay (`test.mjs`) and 14 on the client (`client/test.mjs`), both with a pretend GitHub. It needs Node 18 or newer and no network.
+`npm test` runs 20 checks on the relay (`test.mjs`) and 17 on the client (`client/test.mjs`), both with a pretend GitHub. It needs Node 18 or newer and no network.
 
 ## Licence
 

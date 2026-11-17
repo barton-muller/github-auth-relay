@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 560" role="img" aria-labelledby="t d">
+<title id="t">How Sign in with GitHub and storage work</title>
+<desc id="d">A static site sends the person to GitHub to sign in. GitHub returns a code. The site passes the code to a relay that adds the client secret and returns a token. The site then reads and writes files in the person's own repo through the GitHub API.</desc>
+<style>
+  :root { --bg:#fffcf0; --fg:#100f0f; --mut:#6f6e69; --line:#b7b5ac; --box:#f2f0e5; --a:#205ea6; --g:#66800b; --o:#bc5215; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#100f0f; --fg:#cecdc3; --mut:#878580; --line:#575653; --box:#1c1b1a; --a:#4385be; --g:#879a39; --o:#da702c; } }
+  text { font: 14px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: var(--fg); }
+  .m { fill: var(--mut); font-size: 12px; }
+  .h { font-weight: 600; font-size: 15px; }
+  .box { fill: var(--box); stroke: var(--line); stroke-width: 1.5; }
+  .ar { stroke-width: 2; fill: none; }
+  .n { font-weight: 700; font-size: 13px; fill: #fff; text-anchor: middle; }
+</style>
+<defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker>
+</defs>
+<rect width="920" height="560" fill="var(--bg)"/>
+
+<!-- boxes -->
+<rect class="box" x="20" y="60" width="250" height="270" rx="10"/>
+<text class="h" x="40" y="90">Your site</text>
+<text class="m" x="40" y="110">static, on GitHub Pages</text>
+<text x="40" y="150">client/ghstore.js</text>
+<text class="m" x="40" y="172">PKCE, token, read, write</text>
+<text class="m" x="40" y="206">keeps the token in the browser</text>
+<text class="m" x="40" y="226">no server, no secret</text>
+
+<rect class="box" x="335" y="30" width="250" height="150" rx="10"/>
+<text class="h" x="355" y="60">github.com</text>
+<text class="m" x="355" y="80">sign in and install the app</text>
+<text class="m" x="355" y="110">person picks which repos</text>
+<text class="m" x="355" y="130">the app may use</text>
+
+<rect class="box" x="650" y="60" width="250" height="150" rx="10"/>
+<text class="h" x="670" y="90">Relay</text>
+<text class="m" x="670" y="110">one Cloudflare Worker</text>
+<text x="670" y="140">holds the client secret</text>
+<text class="m" x="670" y="162">/token  /refresh  /return</text>
+<text class="m" x="670" y="182">keeps nothing, logs nothing</text>
+
+<rect class="box" x="335" y="270" width="565" height="130" rx="10"/>
+<text class="h" x="355" y="300">api.github.com, the person's own repo</text>
+<text class="m" x="355" y="322">my-app/data.json     other-app/notes.md     ...</text>
+<text class="m" x="355" y="350">one file per key, a commit per save, a sha to catch conflicting edits</text>
+<text class="m" x="355" y="372">history, diffs and AI-agent editing come free with git</text>
+
+<!-- 1: site -> github -->
+<path class="ar" d="M270 100 H335" stroke="var(--a)" marker-end="url(#ah)"/>
+<circle cx="302" cy="84" r="11" fill="var(--a)"/><text class="n" x="302" y="89">1</text>
+<!-- 2: github -> site -->
+<path class="ar" d="M335 150 H270" stroke="var(--a)" marker-end="url(#ah)" stroke-dasharray="5 4"/>
+<circle cx="302" cy="134" r="11" fill="var(--a)"/><text class="n" x="302" y="139">2</text>
+<!-- 3: site -> relay (around over top) -->
+<path class="ar" d="M145 60 V14 H775 V60" stroke="var(--o)" marker-end="url(#ah)"/>
+<path class="ar" d="M800 60 V22 H170 V60" stroke="var(--o)" marker-end="url(#ah)" stroke-dasharray="5 4"/>
+<circle cx="460" cy="18" r="11" fill="var(--o)"/><text class="n" x="460" y="23">3</text>
+<!-- relay -> github -->
+<path class="ar" d="M650 160 H585" stroke="var(--o)" marker-end="url(#ah)"/>
+<text class="m" x="617" y="152" text-anchor="middle">+ secret</text>
+<!-- 4: site -> api -->
+<path class="ar" d="M145 330 V335 H335" stroke="var(--g)" marker-end="url(#ah)"/>
+<circle cx="240" cy="335" r="11" fill="var(--g)"/><text class="n" x="240" y="340">4</text>
+
+<!-- legend -->
+<text class="h" x="20" y="440">What happens</text>
+<circle cx="30" cy="464" r="9" fill="var(--a)"/><text class="n" x="30" y="468" style="font-size:11px">1</text>
+<text x="48" y="468">The site sends the person to GitHub with a PKCE challenge. They approve and pick repos.</text>
+<circle cx="30" cy="488" r="9" fill="var(--a)"/><text class="n" x="30" y="492" style="font-size:11px">2</text>
+<text x="48" y="492">GitHub sends them back to the site with a one-time code.</text>
+<circle cx="30" cy="512" r="9" fill="var(--o)"/><text class="n" x="30" y="516" style="font-size:11px">3</text>
+<text x="48" y="516">The site passes the code to the relay. The relay adds the secret, GitHub answers, and the token comes back.</text>
+<circle cx="30" cy="536" r="9" fill="var(--g)"/><text class="n" x="30" y="540" style="font-size:11px">4</text>
+<text x="48" y="540">The site then calls GitHub directly. The relay is only needed again to renew the token.</text>
+</svg>

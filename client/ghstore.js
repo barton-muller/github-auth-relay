@@ -5,7 +5,9 @@
 //   await gh.handleReturn();                  // call on every page load
 //   if (!gh.signedIn()) gh.signIn();          // redirects to github.com and back
 //   const repos = await gh.repos();           // [{ full, branch }], repos the app is installed on
-//   const f = await gh.read(repo, 'notes.json');          // { text, sha } or null
+//   const f = await gh.read(repo, 'notes.json');          // { text, sha, etag } or null
+//   const g = await gh.read(repo, 'notes.json', undefined, f.etag);   // { notModified: true } when unchanged, and free of rate limit
+//   const names = await gh.list(repo, '');                // [{ name, path, type, sha, size }] of the app's folder
 //   await gh.write(repo, 'notes.json', text, f?.sha);     // returns the new sha; throws Conflict on a stale sha
 //   await gh.remove(repo, 'notes.json', f.sha);           // true, or false if already gone
 
@@ -21,9 +23,11 @@ const rand = (n) => url64(crypto.getRandomValues(new Uint8Array(n)));
 const sha256 = async (s) => url64(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))));
 const SKEW = 5 * 60e3;
 
-export function createClient({ clientId, relay, appSlug, name = 'gh-store', fetchImpl = (...a) => fetch(...a) }) {
+// folder: every path is kept under this folder of the repo, so several apps can share one repo ('my-app' -> my-app/notes.json).
+export function createClient({ clientId, relay, appSlug, name = 'gh-store', folder = '', fetchImpl = (...a) => fetch(...a) }) {
   const AUTH = `${name}:auth`;
   const PENDING = `${name}:pending`;
+  const at = (path) => [folder.replace(/^\/+|\/+$/g, ''), path.replace(/^\/+/, '')].filter(Boolean).join('/');
   const here = () => location.origin + location.pathname;
   const load = () => { try { return JSON.parse(localStorage.getItem(AUTH)); } catch { return null; } };
   const save = (a) => localStorage.setItem(AUTH, JSON.stringify(a));
@@ -103,20 +107,32 @@ export function createClient({ clientId, relay, appSlug, name = 'gh-store', fetc
       return out;
     },
 
-    // { text, sha } or null when the file does not exist.
-    async read(repo, path, branch) {
+    // { text, sha, etag } or null when the file does not exist. Pass the etag of an earlier read to get
+    // { notModified: true, etag } instead when nothing changed; GitHub does not count that against the rate limit.
+    async read(repo, path, branch, etag) {
       const t = await api.token();
-      const r = await gh(t, `/repos/${repo}/contents/${path}${branch ? `?ref=${encodeURIComponent(branch)}` : ''}`);
+      const r = await gh(t, `/repos/${repo}/contents/${at(path)}${branch ? `?ref=${encodeURIComponent(branch)}` : ''}`, etag ? { headers: { 'If-None-Match': etag } } : {});
+      if (r.status === 304) return { notModified: true, etag };
       if (r.status === 404) return null;
       if (!r.ok) throw new Error(`GitHub ${r.status}`);
       const j = await r.json();
-      return { text: unb64(j.content), sha: j.sha };
+      return { text: unb64(j.content), sha: j.sha, etag: r.headers.get('ETag') };
+    },
+
+    // Entries of a folder: [{ name, path, type: 'file' | 'dir', sha, size }]. A missing folder is an empty list.
+    async list(repo, dir = '', branch) {
+      const t = await api.token();
+      const r = await gh(t, `/repos/${repo}/contents/${at(dir)}${branch ? `?ref=${encodeURIComponent(branch)}` : ''}`);
+      if (r.status === 404) return [];
+      if (!r.ok) throw new Error(`GitHub ${r.status}`);
+      const j = await r.json();
+      return (Array.isArray(j) ? j : []).map((x) => ({ name: x.name, path: x.path, type: x.type === 'dir' ? 'dir' : 'file', sha: x.sha, size: x.size }));
     },
 
     // Creates or replaces the file. Pass the sha from read() when it exists; a stale one throws Conflict.
     async write(repo, path, text, sha, branch, message = 'Update') {
       const t = await api.token();
-      const r = await gh(t, `/repos/${repo}/contents/${path}`, {
+      const r = await gh(t, `/repos/${repo}/contents/${at(path)}`, {
         method: 'PUT',
         body: JSON.stringify({ message, content: b64(text), ...(sha ? { sha } : {}), ...(branch ? { branch } : {}) }),
       });
@@ -128,7 +144,7 @@ export function createClient({ clientId, relay, appSlug, name = 'gh-store', fetc
     // Deletes the file. Needs the current sha; a stale one throws Conflict. Returns false if it was already gone.
     async remove(repo, path, sha, branch, message = 'Delete') {
       const t = await api.token();
-      const r = await gh(t, `/repos/${repo}/contents/${path}`, {
+      const r = await gh(t, `/repos/${repo}/contents/${at(path)}`, {
         method: 'DELETE',
         body: JSON.stringify({ message, sha, ...(branch ? { branch } : {}) }),
       });

@@ -18,7 +18,7 @@
   <p>Signed in as <b id="who"></b>.</p>
   <label>Repo <select id="repo"></select></label>
   <a id="install" href="#">Choose repos</a>
-  <label>Your text, saved as <code>example.txt</code>
+  <label>Your text, saved as <code>ghstore-example/example.txt</code>
     <textarea id="text" rows="5"></textarea></label>
   <div class="row"><button id="load">Load</button><button id="save">Save</button></div>
   <button id="out-btn">Sign out</button>
@@ -33,6 +33,7 @@ const gh = createClient({
   clientId: 'Iv23li69aGBxYokv1i8f',
   relay: 'https://github-auth-relay.barton-fna.workers.dev',
   appSlug: 'remote-storage-bm',
+  folder: 'ghstore-example',
 });
 const PATH = 'example.txt';
 const $ = (id) => document.getElementById(id);

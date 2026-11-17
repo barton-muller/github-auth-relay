@@ -9,12 +9,14 @@
 ```js
 import { createClient, Conflict } from './ghstore.js';
 
-const gh = createClient({ clientId, relay, appSlug });
+const gh = createClient({ clientId, relay, appSlug, folder: 'my-app' });
 await gh.handleReturn();                       // every page load
 if (!gh.signedIn()) gh.signIn();               // redirect to github.com and back
 
 const [repo] = await gh.repos();               // repos the app is installed on: [{ full, branch }]
-const f = await gh.read(repo.full, 'data.json');            // { text, sha } or null
+const f = await gh.read(repo.full, 'data.json');            // { text, sha, etag } or null
+const g = await gh.read(repo.full, 'data.json', undefined, f.etag);   // { notModified: true } if unchanged
+const files = await gh.list(repo.full, '');                 // [{ name, path, type, sha, size }]
 await gh.write(repo.full, 'data.json', text, f?.sha);       // returns the new sha
 await gh.remove(repo.full, 'data.json', f.sha);             // delete
 ```
@@ -22,6 +24,14 @@ await gh.remove(repo.full, 'data.json', f.sha);             // delete
 If someone else wrote the file in between, `write` throws `Conflict`. Read again, merge, write again. If `repos()` is empty, send the person to `gh.installUrl()`.
 
 The token is kept in `localStorage` under `<name>:auth` (`name` defaults to `gh-store`). Change `name` per app if several apps share an origin, or pass your own storage if you want the token in IndexedDB.
+
+## One folder per app
+
+Pass `folder` and every path lives under it, so `data.json` becomes `my-app/data.json`. Several apps can then share one repo without touching each other's files. This is a convention, not a permission: the app's access covers the whole repo, so only install it on repos you are happy for it to write to.
+
+## Cheap polling
+
+`read` returns an `etag`. Pass it back on the next read. If the file has not changed you get `{ notModified: true }`, and GitHub does not count that request against the rate limit. Use it for sync checks.
 
 ## What it is
 
