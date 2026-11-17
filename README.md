@@ -6,7 +6,7 @@ A site on GitHub Pages cannot hold a secret, and GitHub's token endpoint cannot 
 
 It is built to be shared:
 - **Many sites, one relay.** List each site's origin in `ALLOWED_ORIGINS`. Your own pages on different domains can share it, and so can a friend's, if you add their origin.
-- **One sign-in.** The token can be stored where all your sites can read it, so a person signs in once.
+- **One sign-in per origin.** Sites on one origin (for example several GitHub Pages projects of one account) can share the token, so a person signs in once. Another domain asks again.
 - **Return after install.** `GET /return` sends people back to whichever site started the install, so you do not need a home page per domain.
 - **Repos as storage.** The signed-in token has Contents access to the repos the person picked, so each site can keep its data in the person's own private repo.
 
