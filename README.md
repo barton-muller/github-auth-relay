@@ -58,7 +58,7 @@ The **[full guide](docs/GUIDE.md)** says what this is good for, how it works in 
 
 ## Test
 
-`npm test` runs 26 checks on the relay, 19 on the client and 16 on the demo backend. They use a pretend GitHub and need Node 18 or newer, no network.
+`npm test` runs 26 checks on the relay, 19 on the client and 19 on the demo backend. They use a pretend GitHub and need Node 18 or newer, no network.
 
 ## Publishing the example
 

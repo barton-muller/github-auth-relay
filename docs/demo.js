@@ -1,10 +1,11 @@
 // A fake backend with the same interface as createClient() in ghstore.js. Files live in localStorage, nothing leaves the
 // browser. Use it for demos, local development and tests, then swap in createClient() with the same calls.
 //
-//   const gh = createDemoClient();   // same options as createClient(): folder, name; the rest are ignored
+//   const gh = createDemoClient({ seed: { 'hello.txt': 'Hi' } });   // same options as createClient(): folder, name; the rest are ignored
+// seed: files to start with, { path: text }, added the first time the demo is used. reset() deletes all demo files.
 import { Conflict } from './ghstore.js';
 
-export function createDemoClient({ name = 'gh-store', folder = '' } = {}) {
+export function createDemoClient({ name = 'gh-store', folder = '', seed = {} } = {}) {
   const FILES = `${name}:demo:files`;
   const SIGNED = `${name}:demo:signed-in`;
   const REPO = 'demo/my-data';
@@ -19,7 +20,14 @@ export function createDemoClient({ name = 'gh-store', folder = '' } = {}) {
     signedIn: async () => !!localStorage.getItem(SIGNED),
     login: async () => (localStorage.getItem(SIGNED) ? 'demo-user' : null),
     signOut: async () => localStorage.removeItem(SIGNED),
-    signIn: async () => { localStorage.setItem(SIGNED, '1'); location.reload(); },
+    signIn: async () => {
+      if (localStorage.getItem(FILES) === null) {
+        save(Object.fromEntries(Object.entries(seed).map(([p, text]) => [at(p), { text, sha: sha() }])));
+      }
+      localStorage.setItem(SIGNED, '1');
+      location.reload();
+    },
+    reset: async () => localStorage.removeItem(FILES),
     handleReturn: async () => null,
     token: async () => (localStorage.getItem(SIGNED) ? 'demo' : null),
     installUrl: () => '#',

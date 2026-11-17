@@ -169,7 +169,7 @@ Options of `createClient`:
 
 **No build step:** copy [`client/ghstore.js`](../client/ghstore.js). It has no dependencies. TypeScript types are in `ghstore.d.ts`.
 
-**Build or test without GitHub:** `createDemoClient()` from `pages-storage/client/demo` has the same calls and keeps files in `localStorage`. Swap it for `createClient()` when you go live. The [example page](index.html) does this with a "Try the demo" button.
+**Build or test without GitHub:** `createDemoClient()` from `pages-storage/client/demo` has the same calls and keeps files in `localStorage`. Swap it for `createClient()` when you go live. Pass `seed: { 'hello.txt': 'Hi' }` to start with some files, and call `reset()` to restore them. The [example page](index.html) does this with a "Try the demo" button.
 
 **Merging is your job.** The storage layer tells you the file changed. When two devices edit one file, read again, merge your changes into the new version, and write again. Keeping each record separate, with an `updatedAt`, and taking the newest per record works well. Go Find Yourself does this.
 
@@ -202,6 +202,7 @@ Options of `createClient`:
 - The relay refuses any origin not in `ALLOWED_ORIGINS` and any redirect address outside those origins. Answers are `Cache-Control: no-store`.
 - Tokens pass through the relay in memory only. If you change the code, do not log or store them.
 - PKCE ties each code to the browser that asked for it, so a stolen code is useless.
+- **Tell people what a site can do.** An app installed on a repo can read and write every file in it, and so can the site that holds the token. The example page says so before sign-in. Do the same, and suggest a separate repo for the data.
 - The token lives in the browser's storage. Treat the site like any page that holds a login: no third-party scripts you do not trust.
 - To cut everyone off at once, generate a new client secret in the GitHub App and update `GITHUB_CLIENT_SECRET`.
 - Wildcard callback URLs let any page under that address receive codes. Use them only for addresses you fully control.
