@@ -16,7 +16,7 @@ Used by [Go Find Yourself](https://github.com/barton-muller/find-your-self), a t
 
 ## How it works
 
-The diagram above shows the flow in four steps:
+In the diagram, 1 is sign-in, 2 is the relay and 3 is storage. In more detail:
 
 1. The site sends the person to github.com to approve (with PKCE).
 2. GitHub sends them back to the site with a one-time code.
