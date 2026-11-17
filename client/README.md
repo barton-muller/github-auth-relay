@@ -16,6 +16,7 @@ if (!gh.signedIn()) gh.signIn();               // redirect to github.com and bac
 const [repo] = await gh.repos();               // repos the app is installed on: [{ full, branch }]
 const f = await gh.read(repo.full, 'data.json');            // { text, sha } or null
 await gh.write(repo.full, 'data.json', text, f?.sha);       // returns the new sha
+await gh.remove(repo.full, 'data.json', f.sha);             // delete
 ```
 
 If someone else wrote the file in between, `write` throws `Conflict`. Read again, merge, write again. If `repos()` is empty, send the person to `gh.installUrl()`.
@@ -24,9 +25,10 @@ The token is kept in `localStorage` under `<name>:auth` (`name` defaults to `gh-
 
 ## What it is
 
-Thin. GitHub's Contents API already is a key-value store with versioning: `GET /repos/{repo}/contents/{path}` returns the file and its `sha`, and `PUT` with that `sha` replaces it. The `sha` is a compare-and-swap token, so lost updates become a `409`. The client wraps that, plus the sign-in, and nothing else. There is no SDK to learn.
+Thin. GitHub's Contents API already is a key-value store with versioning: `GET /repos/{repo}/contents/{path}` returns the file and its `sha`, `PUT` with that `sha` replaces it, and `DELETE` with it removes it. The `sha` is a compare-and-swap token, so lost updates become a `409`. The client wraps that, plus the sign-in, and nothing else. There is no SDK to learn.
 
 Limits that shape what you store:
+- Deleting removes the file from the branch but keeps it in git history, so it is not erasure.
 - One request per file. No transactions across files, no listing by prefix beyond fetching a folder.
 - About 1 MB per file through this route. Keep data as a few JSON files, not many small ones.
 - Rate limits are per user (5,000 requests an hour), which is plenty for one person.

@@ -7,6 +7,7 @@
 //   const repos = await gh.repos();           // [{ full, branch }], repos the app is installed on
 //   const f = await gh.read(repo, 'notes.json');          // { text, sha } or null
 //   await gh.write(repo, 'notes.json', text, f?.sha);     // returns the new sha; throws Conflict on a stale sha
+//   await gh.remove(repo, 'notes.json', f.sha);           // true, or false if already gone
 
 export class Conflict extends Error {
   constructor() { super('The file changed on GitHub since it was read.'); this.name = 'Conflict'; }
@@ -122,6 +123,19 @@ export function createClient({ clientId, relay, appSlug, name = 'gh-store', fetc
       if (r.status === 409 || r.status === 422) throw new Conflict();
       if (!r.ok) throw new Error(`GitHub ${r.status}`);
       return (await r.json()).content.sha;
+    },
+
+    // Deletes the file. Needs the current sha; a stale one throws Conflict. Returns false if it was already gone.
+    async remove(repo, path, sha, branch, message = 'Delete') {
+      const t = await api.token();
+      const r = await gh(t, `/repos/${repo}/contents/${path}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ message, sha, ...(branch ? { branch } : {}) }),
+      });
+      if (r.status === 404) return false;
+      if (r.status === 409 || r.status === 422) throw new Conflict();
+      if (!r.ok) throw new Error(`GitHub ${r.status}`);
+      return true;
     },
   };
   return api;

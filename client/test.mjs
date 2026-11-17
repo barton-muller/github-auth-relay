@@ -27,6 +27,7 @@ const fetchImpl = async (url, init = {}) => {
     file.sha = 'sha' + (Number(file.sha.slice(3)) + 1);
     return ok({ content: { sha: file.sha } });
   }
+  if (url.includes('/contents/') && init.method === 'DELETE') return JSON.parse(init.body).sha === file.sha ? ok({}) : ok({}, 409);
   if (url.includes('/contents/missing')) return ok({}, 404);
   if (url.includes('/contents/')) return ok({ sha: file.sha, content: btoa(String.fromCharCode(...new TextEncoder().encode(file.text))) });
   return ok({}, 500);
@@ -54,6 +55,8 @@ check('read: missing is null', (await gh.read('me/data', 'missing.txt')) === nul
 const s2 = await gh.write('me/data', 'a.txt', 'wörld', f.sha);
 check('write: new sha, text stored', s2 === 'sha2' && file.text === 'wörld');
 await gh.write('me/data', 'a.txt', 'x', f.sha).then(() => check('stale sha throws Conflict', false), (e) => check('stale sha throws Conflict', e instanceof Conflict));
+await gh.remove('me/data', 'a.txt', 'old').then(() => check('remove: stale sha throws Conflict', false), (e) => check('remove: stale sha throws Conflict', e instanceof Conflict));
+check('remove: ok', (await gh.remove('me/data', 'a.txt', s2)) === true);
 const a = JSON.parse(store.get('gh-store:auth'));
 a.expiresAt = Date.now() + 1000;
 store.set('gh-store:auth', JSON.stringify(a));
