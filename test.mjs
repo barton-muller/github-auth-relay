@@ -1,5 +1,6 @@
 // Run: node worker/test.mjs   (needs Node 18+; GitHub is mocked)
-import worker from './index.js';
+import worker, { VERSION } from './index.js';
+import { readFileSync } from 'node:fs';
 
 const env = { GITHUB_CLIENT_ID: 'Iv1.public', GITHUB_CLIENT_SECRET: 'shh', ALLOWED_ORIGINS: 'https://me.github.io, http://localhost:5173' };
 const seen = [];
@@ -61,6 +62,13 @@ check('return: odd scheme refused', r.status === 400);
 
 r = await worker.fetch(new Request('https://relay.example/token', { method: 'POST', headers: { Origin: 'https://slash.example', 'Content-Type': 'application/json' }, body: '{}' }), { ...env, ALLOWED_ORIGINS: 'https://slash.example/' });
 check('trailing slash in ALLOWED_ORIGINS tolerated', r.status === 400 && (await r.json()).error === 'bad_request');
+
+r = await worker.fetch(new Request('https://relay.example/'), env);
+j = await r.json();
+check('GET / reports name, version and that it is configured', r.status === 200 && j.name === 'pages-storage' && j.version === VERSION && j.configured === true);
+r = await worker.fetch(new Request('https://relay.example/'), {});
+check('GET / says when not configured', (await r.json()).configured === false);
+check('version matches package.json', VERSION === JSON.parse(readFileSync(new URL('./package.json', import.meta.url))).version);
 
 console.log(fails ? `${fails} failed` : 'all passed');
 process.exit(fails ? 1 : 0);

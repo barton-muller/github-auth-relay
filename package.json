@@ -1,11 +1,11 @@
 {
   "name": "pages-storage",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.1.0",
   "type": "module",
   "description": "Token relay for Sign in with GitHub on static sites (Cloudflare Worker)",
   "scripts": {
-    "test": "node test.mjs && node client/test.mjs",
+    "test": "node test.mjs && node client/test.mjs && node client/demo.test.mjs",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
@@ -29,11 +29,18 @@
     "./client": {
       "types": "./client/ghstore.d.ts",
       "default": "./client/ghstore.js"
+    },
+    "./client/demo": {
+      "types": "./client/demo.d.ts",
+      "default": "./client/demo.js"
     }
   },
   "files": [
     "client/ghstore.js",
     "client/ghstore.d.ts",
-    "index.js"
+    "client/demo.js",
+    "client/demo.d.ts",
+    "index.js",
+    "CHANGELOG.md"
   ]
 }

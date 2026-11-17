@@ -6,7 +6,8 @@
 // Routes (POST, JSON):
 //   /token    { code, redirect_uri, code_verifier }  ->  { access_token, expires_in, refresh_token, refresh_token_expires_in }
 //   /refresh  { refresh_token }                      ->  the same fields
-// Route (GET):
+// Routes (GET):
+//   /  ->  { name, version, configured }, for checking that the Worker runs and which version
 //   /return?state=<site address>&installation_id=...  ->  302 to that site (only allowed origins), keeping the query.
 //   Set the GitHub App's Setup URL to <relay>/return; sites add state=<their address> to the install link.
 //
@@ -15,6 +16,9 @@
 //   GITHUB_CLIENT_SECRET  secret
 //   ALLOWED_ORIGINS       comma-separated site origins that may call this relay
 // Each can be a variable or a secret; see .dev.vars.example.
+
+// Keep in step with package.json (a test checks it). GET / reports it, so you can see which version a Worker runs.
+export const VERSION = '0.1.0';
 
 const TOKEN_URL = 'https://github.com/login/oauth/access_token';
 
@@ -64,6 +68,9 @@ export default {
   async fetch(request, env) {
     const u = new URL(request.url);
     if (request.method === 'GET' && u.pathname.replace(/\/+$/, '') === '/return') return sendBack(u, env);
+    if (request.method === 'GET' && u.pathname === '/') {
+      return json({ name: 'pages-storage', version: VERSION, configured: !!(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET && origins(env).length) }, 200, '');
+    }
     const origin = request.headers.get('Origin') || '';
     const allowed = origins(env).includes(origin);
     if (request.method === 'OPTIONS') return allowed ? new Response(null, { status: 204, headers: cors(origin) }) : new Response(null, { status: 403 });

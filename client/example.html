@@ -3,72 +3,166 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GitHub storage example</title>
+<title>pages-storage example</title>
 <style>
-  body { font: 16px/1.5 system-ui, sans-serif; max-width: 34rem; margin: 2rem auto; padding: 0 16px; }
-  textarea, select, button { font: inherit; width: 100%; box-sizing: border-box; margin: .25rem 0; padding: .5rem; }
-  .row { display: flex; gap: .5rem; } .row > * { flex: 1; }
-  #msg { color: #555; min-height: 1.5em; }
+  :root { --bg:#fffcf0; --fg:#100f0f; --mut:#6f6e69; --line:#d7d3c4; --box:#f2f0e5; --a:#205ea6; --g:#66800b; --r:#af3029; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#100f0f; --fg:#cecdc3; --mut:#878580; --line:#343331; --box:#1c1b1a; --a:#4385be; --g:#879a39; --r:#d14d41; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  main { max-width: 40rem; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  p { margin: .4rem 0; } .mut { color: var(--mut); font-size: .9rem; }
+  button, select, input, textarea { font: inherit; color: inherit; background: var(--box); border: 1px solid var(--line); border-radius: 8px; padding: .5rem .7rem; }
+  button { cursor: pointer; } button.main { background: var(--g); border-color: var(--g); color: #fff; font-weight: 600; }
+  button.link { background: none; border: 0; padding: 0; color: var(--a); text-decoration: underline; }
+  button.del { color: var(--r); }
+  textarea { width: 100%; min-height: 9rem; resize: vertical; font-family: ui-monospace, monospace; font-size: .9rem; }
+  .row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin: .5rem 0; } .row > .grow { flex: 1; min-width: 8rem; } .row > span.grow { min-width: 0; }
+  ul { list-style: none; margin: .5rem 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  li { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem .8rem; border-top: 1px solid var(--line); cursor: pointer; background: var(--box); }
+  li:first-child { border-top: 0; } li:hover { background: var(--bg); } li.on { outline: 2px solid var(--a); outline-offset: -2px; }
+  li span:last-child { color: var(--mut); font-size: .85rem; }
+  #msg { min-height: 1.5em; color: var(--mut); }
+  .card { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 1rem 0; background: var(--box); }
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
-<h1>GitHub storage example</h1>
-<p id="msg"></p>
-<div id="out" hidden>
-  <p>Signed in as <b id="who"></b>.</p>
-  <label>Repo <select id="repo"></select></label>
-  <a id="install" href="#">Choose repos</a>
-  <label>Your text, saved as <code>ghstore-example/example.txt</code>
-    <textarea id="text" rows="5"></textarea></label>
-  <div class="row"><button id="load">Load</button><button id="save">Save</button></div>
-  <button id="out-btn">Sign out</button>
-</div>
-<div id="in" hidden><button id="signin">Sign in with GitHub</button></div>
+<main>
+  <h1>pages-storage example</h1>
+  <p class="mut">A tiny app that keeps text files in your own GitHub repo. Everything below runs in your browser.</p>
+  <p id="msg" role="status"></p>
+
+  <section id="out" class="card">
+    <p>Sign in with GitHub to browse a repo and edit its text files, or try the demo, which keeps fake files in this browser.</p>
+    <div class="row"><button id="signin" class="main">Sign in with GitHub</button><button id="demo">Try the demo</button></div>
+    <p class="mut" id="cfg-note" hidden>Real sign-in is off until you fill in <code>CONFIG</code> in this file.</p>
+  </section>
+
+  <section id="app" hidden>
+    <div class="row">
+      <span>Signed in as <b id="who"></b><span id="demo-tag" class="mut" hidden> (demo)</span></span>
+      <span class="grow"></span>
+      <button id="signout" class="link">Sign out</button>
+    </div>
+    <div class="row">
+      <select id="repo" class="grow" aria-label="Repo"></select>
+      <a id="install" class="mut" href="#">Choose repos</a>
+    </div>
+    <p id="crumbs"></p>
+    <ul id="files"></ul>
+    <div class="row">
+      <input id="newname" class="grow" placeholder="new-file.txt" aria-label="New file name" autocapitalize="off" autocomplete="off">
+      <button id="create">New file</button>
+    </div>
+
+    <div id="editor" class="card" hidden>
+      <p><b id="fname"></b> <span class="mut" id="fmeta"></span></p>
+      <textarea id="text" aria-label="File contents"></textarea>
+      <div class="row"><button id="save" class="main">Save</button><button id="reload">Reload</button><span class="grow"></span><button id="delete" class="del">Delete</button></div>
+    </div>
+    <p class="mut">Each save is a commit in the repo. If the file changed elsewhere in the meantime, saving asks you to reload first.</p>
+  </section>
+</main>
 
 <script type="module">
 import { createClient, Conflict } from './ghstore.js';
+import { createDemoClient } from './demo.js';
 
-// Fill in your three public values. Serve this page from an origin listed in the relay's ALLOWED_ORIGINS.
-const gh = createClient({
+// Fill in your own values to use real sign-in. Serve this page from an origin listed in the relay's ALLOWED_ORIGINS.
+const CONFIG = {
   clientId: 'Iv23li69aGBxYokv1i8f',
   relay: 'https://pages-storage-active.barton-fna.workers.dev',
   appSlug: 'pages-storage-bm',
-  folder: 'ghstore-example',
-});
-const PATH = 'example.txt';
+};
+
+const NAME = 'pages-storage-example';
+const MODE = `${NAME}:mode`;
 const $ = (id) => document.getElementById(id);
 const say = (t) => ($('msg').textContent = t);
-let sha;
+const get = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const demo = get(MODE) === 'demo';
+const gh = demo ? createDemoClient({ name: NAME }) : createClient({ ...CONFIG, name: NAME });
 
-async function load() {
-  const f = await gh.read($('repo').value, PATH);
-  sha = f?.sha;
-  $('text').value = f?.text ?? '';
-  say(f ? 'Loaded.' : 'No file yet. Type something and save.');
+let dir = '', file = null; // file: { path, sha }
+
+const crumbs = () => {
+  const parts = dir ? dir.split('/') : [];
+  const links = [['repo', '']].concat(parts.map((p, i) => [p, parts.slice(0, i + 1).join('/')]));
+  $('crumbs').replaceChildren(...links.flatMap(([label, path], i) => {
+    const b = Object.assign(document.createElement('button'), { className: 'link', textContent: label });
+    b.onclick = () => open(path);
+    return i ? ['/', b] : [b];
+  }));
+};
+
+async function open(path) {
+  dir = path; file = null; $('editor').hidden = true; say('');
+  crumbs();
+  let items;
+  try { items = await gh.list($('repo').value, dir); } catch (e) { return say(e.message); }
+  $('files').replaceChildren(...(items.length ? items : [Object.assign(document.createElement('li'), { textContent: 'Empty. Create a file below.' })]).map((x) => {
+    const li = document.createElement('li');
+    if (!x.name) return li;
+    li.append(Object.assign(document.createElement('span'), { textContent: x.type === 'dir' ? `${x.name}/` : x.name }), Object.assign(document.createElement('span'), { textContent: x.type === 'dir' ? '' : `${x.size} B` }));
+    li.onclick = () => (x.type === 'dir' ? open(x.path) : edit(x.path, li));
+    return li;
+  }));
 }
 
-$('signin').onclick = () => gh.signIn();
-$('out-btn').onclick = async () => { await gh.signOut(); location.reload(); };
-$('load').onclick = () => load().catch((e) => say(e.message));
-$('save').onclick = async () => {
+async function edit(path, li) {
+  say('Loading…');
   try {
-    sha = await gh.write($('repo').value, PATH, $('text').value, sha);
-    say('Saved.');
-  } catch (e) {
-    say(e instanceof Conflict ? 'Changed elsewhere. Press Load, then save again.' : e.message);
-  }
+    const f = await gh.read($('repo').value, path);
+    if (!f) return say('That file is gone.');
+    file = { path, sha: f.sha };
+    $('fname').textContent = path;
+    $('fmeta').textContent = `${f.text.length} character${f.text.length === 1 ? '' : 's'}`;
+    $('text').value = f.text;
+    $('editor').hidden = false;
+    document.querySelectorAll('#files li').forEach((e) => e.classList.toggle('on', e === li));
+    say('');
+  } catch (e) { say(e.message); }
+}
+
+const fail = (e) => say(e instanceof Conflict ? 'Changed elsewhere. Press Reload, then save again.' : e.message);
+
+$('signin').onclick = () => { localStorage.removeItem(MODE); gh.signIn(); };
+$('demo').onclick = async () => { localStorage.setItem(MODE, 'demo'); await createDemoClient({ name: NAME }).signIn(); };
+$('signout').onclick = async () => { await gh.signOut(); localStorage.removeItem(MODE); location.reload(); };
+$('repo').onchange = () => open('');
+$('reload').onclick = () => edit(file.path);
+$('save').onclick = async () => {
+  try { const path = file.path; file.sha = await gh.write($('repo').value, path, $('text').value, file.sha); await open(dir); await edit(path); say('Saved.'); } catch (e) { fail(e); }
+};
+$('delete').onclick = async () => {
+  if (!confirm(`Delete ${file.path}?`)) return;
+  try { await gh.remove($('repo').value, file.path, file.sha); say('Deleted.'); open(dir); } catch (e) { fail(e); }
+};
+$('create').onclick = async () => {
+  const n = $('newname').value.trim().replace(/^\/+/, '');
+  if (!n) return say('Type a file name first.');
+  const path = dir ? `${dir}/${n}` : n;
+  try {
+    if (await gh.read($('repo').value, path)) return say('A file with that name already exists.');
+    await gh.write($('repo').value, path, '\n');
+    $('newname').value = '';
+    await open(dir); edit(path);
+  } catch (e) { fail(e); }
 };
 
 try { await gh.handleReturn(); } catch (e) { say(e.message); }
-if (!(await gh.signedIn())) $('in').hidden = false;
-else {
+if (!(await gh.signedIn())) {
   $('out').hidden = false;
+  if (!CONFIG.clientId || !CONFIG.relay) { $('signin').disabled = true; $('cfg-note').hidden = false; }
+} else {
+  $('out').hidden = true; $('app').hidden = false;
   $('who').textContent = await gh.login();
-  $('install').href = gh.installUrl();
+  $('demo-tag').hidden = !demo;
+  if (demo) $('install').hidden = true; else $('install').href = gh.installUrl();
   const repos = await gh.repos().catch((e) => (say(e.message), []));
   $('repo').replaceChildren(...repos.map((r) => new Option(r.full, r.full)));
-  if (repos.length) await load().catch((e) => say(e.message));
-  else say('Install the app on a repo first (Choose repos).');
+  if (repos.length) await open(''); else say('Install the app on a repo first (Choose repos).');
 }
 </script>
 </body>

@@ -1,0 +1,38 @@
+name: Example page
+
+# Publishes the example app (client/example.html) as the site of this repo.
+# In the repo's Settings, Pages, set Source to "GitHub Actions".
+on:
+  push:
+    branches: [main]
+    paths: ['client/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble the site
+        run: |
+          mkdir _site
+          cp client/ghstore.js client/demo.js _site/
+          cp client/example.html _site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
