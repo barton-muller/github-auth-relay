@@ -1,10 +1,16 @@
 # github-auth-relay
 
-A tiny Cloudflare Worker that lets static sites offer **Sign in with GitHub**.
+One small Cloudflare Worker that lets **any number of static sites** offer **Sign in with GitHub**, on one GitHub App, with no server of your own.
 
 A site on GitHub Pages cannot hold a secret, and GitHub's token endpoint cannot be called from a web page. So the one step that needs the app's client secret runs here. Everything else happens in the browser. The relay keeps nothing: no database, no copy of any token, no logs of them.
 
-Used by [Go Find Yourself](https://github.com/barton-muller/find-your-self). One relay serves any number of sites.
+It is built to be shared:
+- **Many sites, one relay.** List each site's origin in `ALLOWED_ORIGINS`. Your own pages on different domains can share it, and so can a friend's, if you add their origin.
+- **One sign-in.** The token can be stored where all your sites can read it, so a person signs in once.
+- **Return after install.** `GET /return` sends people back to whichever site started the install, so you do not need a home page per domain.
+- **Repos as storage.** The signed-in token has Contents access to the repos the person picked, so each site can keep its data in the person's own private repo.
+
+Used by [Go Find Yourself](https://github.com/barton-muller/find-your-self), a trip planner that stores its plan this way.
 
 ## How it works
 
@@ -73,22 +79,32 @@ curl -X POST https://github-auth-relay.<you>.workers.dev/token -H 'Origin: https
 ```
 `{"error":"bad_request"}` is the right answer. `relay_not_configured` means the Client ID or the secret is missing in the deployed Worker, so check `GITHUB_CLIENT_ID` in `wrangler.toml` and the `GITHUB_CLIENT_SECRET` secret, and redeploy. `origin_not_allowed` means the origin is not in `ALLOWED_ORIGINS`.
 
-### A home page that forwards (for several sites on one address)
+### Returning people to the right site after install
 
-GitHub can only send people back to one Setup URL (or the first callback URL). If you host several apps under one GitHub Pages address, make that URL the root of the address, for example `https://<you>.github.io/`, and put the page in [`examples/pages-home/index.html`](examples/pages-home/index.html) there. Create a repo named `<you>.github.io`, add the file as `index.html`, and turn on GitHub Pages for it. Then:
-- Set the GitHub App's **Setup URL** to `https://<you>.github.io/`.
-- Each app writes the address to return to into `localStorage` (`gh-auth-return`) before it opens GitHub's install page. The page reads it and forwards the person there, keeping GitHub's query (`installation_id` and so on). It only forwards inside its own origin.
+After someone installs the app on a repo, GitHub sends them to the app's one **Setup URL**. With several sites that must be a page that knows where each person came from. The relay does this:
 
-Go Find Yourself already does this. Without such a page, people land on a 404 after installing.
+- Set the GitHub App's **Setup URL** to `https://<your relay>/return`.
+- Each site adds `state=<its own address>` to the install link: `https://github.com/apps/<slug>/installations/new?state=<url-encoded address>`.
+- `/return` redirects to that address, keeping GitHub's query (`installation_id`, `setup_action`). It only redirects to origins in `ALLOWED_ORIGINS`, so it is not an open redirect.
+
+This works for any domain. Go Find Yourself does it.
+
+**Without the relay:** a static page at the root of one address can forward instead. [`examples/pages-home/index.html`](examples/pages-home/index.html) reads a `localStorage` value the app wrote before opening the install page. It only works inside one origin, so use `/return` when your sites are on different domains.
 
 ### 3. Point a site at it
 
 The site needs three public values: the GitHub App's Client ID, the relay's address, and the app slug. Go Find Yourself reads them from the build variables `VITE_GH_CLIENT_ID`, `VITE_GH_RELAY` and `VITE_GH_APP_SLUG`. Other sites can use any names. See [how Go Find Yourself does it](https://github.com/barton-muller/find-your-self/blob/main/docs/GITHUB-SIGN-IN.md).
 
-### Adding another site
-1. Add its origin to `ALLOWED_ORIGINS` (`https://<you>.github.io` already covers every page under it) and redeploy.
+### Adding another site or domain
+1. Add its origin to `ALLOWED_ORIGINS` (`https://<you>.github.io` already covers every page under it, but `https://other.example` is a separate entry) and redeploy.
 2. Add its address as another Callback URL on the GitHub App, unless wildcard matching already covers it.
-3. Give the site the same three values.
+3. Give the site the three values and have it add `state=<its address>` to the install link.
+
+The sign-in token is stored per origin by the browser, so a site on another domain asks the person to sign in once more. Sites on one origin can share it.
+
+## What is and is not in this repo
+
+This repo is the server side only: the Worker, the test, a setup guide and an example page. The browser side (PKCE, redirect, token refresh, repo picker) lives in Go Find Yourself, in [`src/auth.ts`](https://github.com/barton-muller/find-your-self/blob/main/src/auth.ts) and [`src/sync.ts`](https://github.com/barton-muller/find-your-self/blob/main/src/sync.ts). It is about 200 lines with no dependencies except a key-value store. Copy it, or ask for it to be split out as a package.
 
 ## Security notes
 
@@ -100,7 +116,7 @@ The site needs three public values: the GitHub App's Client ID, the relay's addr
 
 ## Test
 
-`npm test` (or `node test.mjs`) runs 16 checks with a pretend GitHub. It needs Node 18 or newer and no network.
+`npm test` (or `node test.mjs`) runs 20 checks with a pretend GitHub. It needs Node 18 or newer and no network.
 
 ## Licence
 

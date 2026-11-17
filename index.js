@@ -6,6 +6,9 @@
 // Routes (POST, JSON):
 //   /token    { code, redirect_uri, code_verifier }  ->  { access_token, expires_in, refresh_token, refresh_token_expires_in }
 //   /refresh  { refresh_token }                      ->  the same fields
+// Route (GET):
+//   /return?state=<site address>&installation_id=...  ->  302 to that site (only allowed origins), keeping the query.
+//   Set the GitHub App's Setup URL to <relay>/return; sites add state=<their address> to the install link.
 //
 // Settings (see wrangler.toml and the README):
 //   GITHUB_CLIENT_ID      variable, public
@@ -46,8 +49,20 @@ async function exchange(params, env) {
   };
 }
 
+function sendBack(url, env) {
+  let to;
+  try { to = new URL(url.searchParams.get('state') || ''); } catch { /* invalid */ }
+  if (!to || to.protocol !== 'https:' && to.hostname !== 'localhost' || !origins(env).includes(to.origin)) {
+    return new Response('This link does not point to a site that uses this relay.', { status: 400, headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' } });
+  }
+  for (const [k, v] of url.searchParams) if (k !== 'state' && !to.searchParams.has(k)) to.searchParams.set(k, v);
+  return new Response(null, { status: 302, headers: { Location: to.toString(), 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
+}
+
 export default {
   async fetch(request, env) {
+    const u = new URL(request.url);
+    if (request.method === 'GET' && u.pathname.replace(/\/+$/, '') === '/return') return sendBack(u, env);
     const origin = request.headers.get('Origin') || '';
     const allowed = origins(env).includes(origin);
     if (request.method === 'OPTIONS') return allowed ? new Response(null, { status: 204, headers: cors(origin) }) : new Response(null, { status: 403 });

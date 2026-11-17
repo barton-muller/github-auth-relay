@@ -49,5 +49,15 @@ const n = seen.length;
 await worker.fetch(new Request('https://relay.example/token', { method: 'POST', headers: { Origin: 'https://me.github.io' }, body: 'not json' }), env);
 check('bad JSON does not reach GitHub', seen.length === n);
 
+const ret = (q) => worker.fetch(new Request(`https://relay.example/return?${q}`), env);
+r = await ret('state=' + encodeURIComponent('https://me.github.io/app/#/settings') + '&installation_id=7&setup_action=install');
+check('return: redirects to the site with the query', r.status === 302 && r.headers.get('Location') === 'https://me.github.io/app/?installation_id=7&setup_action=install#/settings');
+r = await ret('state=' + encodeURIComponent('https://evil.example/') + '&installation_id=7');
+check('return: other site refused', r.status === 400 && !r.headers.get('Location'));
+r = await ret('installation_id=7');
+check('return: no state refused', r.status === 400);
+r = await ret('state=' + encodeURIComponent('javascript:alert(1)'));
+check('return: odd scheme refused', r.status === 400);
+
 console.log(fails ? `${fails} failed` : 'all passed');
 process.exit(fails ? 1 : 0);
