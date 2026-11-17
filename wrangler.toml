@@ -2,13 +2,8 @@ name = "github-auth-relay"
 main = "index.js"
 compatibility_date = "2025-01-01"
 
-[vars]
-# Public value from your GitHub App's settings page (it starts with "Iv").
-GITHUB_CLIENT_ID = "Iv23li69aGBxYokv1i8f"
-# Comma-separated origins (scheme + host, no path, no trailing slash) of the sites that may use this relay.
-# One entry covers every page under it, for example every GitHub Pages project of one account.
-ALLOWED_ORIGINS = "https://barton-muller.github.io"
-
-# The client secret is NOT stored here. Add it as a Secret named GITHUB_CLIENT_SECRET,
-# in the Cloudflare dashboard (Worker, Settings, Variables and Secrets) or with:
-#   npx wrangler secret put GITHUB_CLIENT_SECRET
+# Settings are not kept here, so a copy of this repo has nothing of mine in it.
+# GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET and ALLOWED_ORIGINS are asked for by the Deploy to Cloudflare button
+# (see .dev.vars.example) or set in the dashboard under Settings, Variables and Secrets.
+# keep_vars stops a deploy from removing plain variables that were set in the dashboard.
+keep_vars = true

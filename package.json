@@ -11,5 +11,18 @@
   "devDependencies": {
     "wrangler": "^4.0.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "cloudflare": {
+    "bindings": {
+      "GITHUB_CLIENT_ID": {
+        "description": "The **Client ID** from your GitHub App's settings page. It starts with `Iv`. [Make the app first](https://github.com/barton-muller/github-auth-relay#1-make-a-github-app)."
+      },
+      "GITHUB_CLIENT_SECRET": {
+        "description": "A **client secret** generated on the same GitHub App page. It is shown once. Never put it in a repo or a website."
+      },
+      "ALLOWED_ORIGINS": {
+        "description": "The sites that may use this relay, comma-separated, each as scheme and host with no path and no trailing slash. Example: `https://you.github.io,https://example.com`."
+      }
+    }
+  }
 }

@@ -11,13 +11,14 @@
 //   Set the GitHub App's Setup URL to <relay>/return; sites add state=<their address> to the install link.
 //
 // Settings (see wrangler.toml and the README):
-//   GITHUB_CLIENT_ID      variable, public
+//   GITHUB_CLIENT_ID      public, from the GitHub App
 //   GITHUB_CLIENT_SECRET  secret
-//   ALLOWED_ORIGINS       variable, comma-separated site origins that may call this relay
+//   ALLOWED_ORIGINS       comma-separated site origins that may call this relay
+// Each can be a variable or a secret; see .dev.vars.example.
 
 const TOKEN_URL = 'https://github.com/login/oauth/access_token';
 
-const origins = (env) => (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
+const origins = (env) => (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim().replace(/\/+$/, '')).filter(Boolean);
 
 const cors = (origin) => ({
   'Access-Control-Allow-Origin': origin,

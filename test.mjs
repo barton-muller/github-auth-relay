@@ -59,5 +59,8 @@ check('return: no state refused', r.status === 400);
 r = await ret('state=' + encodeURIComponent('javascript:alert(1)'));
 check('return: odd scheme refused', r.status === 400);
 
+r = await worker.fetch(new Request('https://relay.example/token', { method: 'POST', headers: { Origin: 'https://slash.example', 'Content-Type': 'application/json' }, body: '{}' }), { ...env, ALLOWED_ORIGINS: 'https://slash.example/' });
+check('trailing slash in ALLOWED_ORIGINS tolerated', r.status === 400 && (await r.json()).error === 'bad_request');
+
 console.log(fails ? `${fails} failed` : 'all passed');
 process.exit(fails ? 1 : 0);

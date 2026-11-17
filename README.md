@@ -61,17 +61,25 @@ Create it. On the app's page copy the **Client ID** (public), and generate a **c
 
 ### 2. Deploy the Worker
 
-**From the Cloudflare dashboard, connected to this repo (Workers Builds):**
-1. *Workers & Pages, Create, Import a repository*. Choose your fork of this repo.
-2. The Worker name must match `name` in `wrangler.toml` (`github-auth-relay`). Leave the root directory empty. Build command empty. Deploy command `npx wrangler deploy`.
-3. Edit `wrangler.toml` in your fork: set `GITHUB_CLIENT_ID` and `ALLOWED_ORIGINS`. Plain values set only in the dashboard are replaced by `wrangler.toml` on each deploy, so keep them in the file. Both are public.
-4. In the Worker's *Settings, Variables and Secrets* add a **Secret** named `GITHUB_CLIENT_SECRET` with your client secret. Secrets survive deploys.
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/barton-muller/github-auth-relay)
+
+The button copies this repo into your GitHub account, deploys it with Workers Builds, and asks for the three settings:
+
+| Setting | Value |
+|---|---|
+| `GITHUB_CLIENT_ID` | The Client ID from step 1. Public. |
+| `GITHUB_CLIENT_SECRET` | The client secret from step 1. |
+| `ALLOWED_ORIGINS` | The sites that may use the relay, comma-separated, scheme and host only: `https://you.github.io,https://example.com`. One entry covers every page under it. |
+
+Nothing personal is stored in the repo. Later pushes to your copy redeploy it, and the settings stay. To change a setting, edit it in the Worker's *Settings, Variables and Secrets*.
 
 **Or from a computer:**
 ```
 npm install
 npx wrangler login
+npx wrangler secret put GITHUB_CLIENT_ID
 npx wrangler secret put GITHUB_CLIENT_SECRET
+npx wrangler secret put ALLOWED_ORIGINS
 npx wrangler deploy
 ```
 
@@ -81,7 +89,7 @@ To check the settings, send a POST from an allowed origin (a computer is easiest
 ```
 curl -X POST https://github-auth-relay.<you>.workers.dev/token -H 'Origin: https://<you>.github.io' -H 'Content-Type: application/json' -d '{}'
 ```
-`{"error":"bad_request"}` is the right answer. `relay_not_configured` means the Client ID or the secret is missing in the deployed Worker, so check `GITHUB_CLIENT_ID` in `wrangler.toml` and the `GITHUB_CLIENT_SECRET` secret, and redeploy. `origin_not_allowed` means the origin is not in `ALLOWED_ORIGINS`.
+`{"error":"bad_request"}` is the right answer. `relay_not_configured` means the Client ID or the secret is missing in the deployed Worker, so check both in the Worker's *Settings, Variables and Secrets*. `origin_not_allowed` means the origin is not in `ALLOWED_ORIGINS`.
 
 ### Returning people to the right site after install
 
@@ -100,7 +108,7 @@ This works for any domain. Go Find Yourself does it.
 The site needs three public values: the GitHub App's Client ID, the relay's address, and the app slug. Go Find Yourself reads them from the build variables `VITE_GH_CLIENT_ID`, `VITE_GH_RELAY` and `VITE_GH_APP_SLUG`. Other sites can use any names. See [how Go Find Yourself does it](https://github.com/barton-muller/find-your-self/blob/main/docs/GITHUB-SIGN-IN.md).
 
 ### Adding another site or domain
-1. Add its origin to `ALLOWED_ORIGINS` (`https://<you>.github.io` already covers every page under it, but `https://other.example` is a separate entry) and redeploy.
+1. Add its origin to `ALLOWED_ORIGINS` in the dashboard (`https://<you>.github.io` already covers every page under it, but `https://other.example` is a separate entry). No redeploy is needed.
 2. Add its address as another Callback URL on the GitHub App, unless wildcard matching already covers it.
 3. Give the site the three values and have it add `state=<its address>` to the install link.
 
@@ -122,7 +130,7 @@ Go Find Yourself has its own, app-specific version in [`src/auth.ts`](https://gi
 
 ## Test
 
-`npm test` runs 20 checks on the relay (`test.mjs`) and 17 on the client (`client/test.mjs`), both with a pretend GitHub. It needs Node 18 or newer and no network.
+`npm test` runs 21 checks on the relay (`test.mjs`) and 17 on the client (`client/test.mjs`), both with a pretend GitHub. It needs Node 18 or newer and no network.
 
 ## Licence
 
