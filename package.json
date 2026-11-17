@@ -6,6 +6,7 @@
   "description": "Token relay for Sign in with GitHub on static sites (Cloudflare Worker)",
   "scripts": {
     "test": "node test.mjs && node client/test.mjs && node client/demo.test.mjs",
+    "sync-docs": "cp client/ghstore.js client/demo.js docs/",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {

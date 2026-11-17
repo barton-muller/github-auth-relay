@@ -2,7 +2,7 @@
 
 `ghstore.js` is the browser side of the relay: sign in with GitHub, then read and write files in the repos the person chose. About 120 lines, no dependencies, no build step. Copy it into your site.
 
-`example.html` is a complete page that stores one piece of text as `example.txt` in a repo you pick. Put both files on a site whose origin is in the relay's `ALLOWED_ORIGINS`, fill in the three public values at the top of the script, and open it.
+The example page is [`docs/index.html`](../docs/index.html). It lets you browse a repo and create, edit and delete text files, with a "Try the demo" button that needs no account. Copy it with `ghstore.js` and `demo.js` onto a site whose origin is in the relay's `ALLOWED_ORIGINS`, fill in the three public values at the top of the script, and open it.
 
 ## Use
 

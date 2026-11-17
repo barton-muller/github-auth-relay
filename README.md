@@ -12,7 +12,7 @@ One GitHub App and one relay serve every site you list. All pages under one GitH
 
 **Size limit:** files up to about 1 MB each, one request per file, and every save is a commit. It suits settings, notes, plans and small records, not images, uploads or heavy write traffic. More in [Limits](docs/GUIDE.md#limits).
 
-**[Try the live example](https://barton-muller.github.io/pages-storage/).** Sign in with GitHub, or use the demo, which needs no account. It browses a repo and creates, edits and deletes text files. The source is [`client/example.html`](client/example.html), about 160 lines.
+**[Try the live example](https://barton-muller.github.io/pages-storage/).** Sign in with GitHub, or use the demo, which needs no account. It browses a repo and creates, edits and deletes text files. The source is [`docs/index.html`](docs/index.html), about 160 lines.
 
 ## Set up
 
@@ -48,9 +48,9 @@ The **[full guide](docs/GUIDE.md)** says what this is good for, how it works in 
 | `index.js`, `wrangler.toml` | The relay, a Cloudflare Worker |
 | `client/ghstore.js` | Browser client: sign-in, token renewal, read, write, list, remove |
 | `client/demo.js` | The same interface over `localStorage`, for demos and tests |
-| `client/example.html` | The example app |
+| `docs/index.html` | The example app. GitHub Pages serves the `docs/` folder, so it is also the live site |
 | `examples/pages-home` | A home page that forwards after install, for setups without `/return` |
-| `docs/` | The guide and the diagram |
+| `docs/GUIDE.md`, `docs/*.svg` | The guide and the diagram |
 
 ## Versions
 
@@ -58,7 +58,11 @@ The **[full guide](docs/GUIDE.md)** says what this is good for, how it works in 
 
 ## Test
 
-`npm test` runs 24 checks on the relay, 19 on the client and 16 on the demo backend. They use a pretend GitHub and need Node 18 or newer, no network.
+`npm test` runs 26 checks on the relay, 19 on the client and 16 on the demo backend. They use a pretend GitHub and need Node 18 or newer, no network.
+
+## Publishing the example
+
+Settings, Pages, Source: *Deploy from a branch*, branch `main`, folder `/docs`. After editing `client/ghstore.js` or `client/demo.js`, run `npm run sync-docs` so the site gets the same copies. A test fails if they differ.
 
 ## Licence
 

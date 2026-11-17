@@ -169,7 +169,7 @@ Options of `createClient`:
 
 **No build step:** copy [`client/ghstore.js`](../client/ghstore.js). It has no dependencies. TypeScript types are in `ghstore.d.ts`.
 
-**Build or test without GitHub:** `createDemoClient()` from `pages-storage/client/demo` has the same calls and keeps files in `localStorage`. Swap it for `createClient()` when you go live. The [example page](../client/example.html) does this with a "Try the demo" button.
+**Build or test without GitHub:** `createDemoClient()` from `pages-storage/client/demo` has the same calls and keeps files in `localStorage`. Swap it for `createClient()` when you go live. The [example page](index.html) does this with a "Try the demo" button.
 
 **Merging is your job.** The storage layer tells you the file changed. When two devices edit one file, read again, merge your changes into the new version, and write again. Keeping each record separate, with an `updatedAt`, and taking the newest per record works well. Go Find Yourself does this.
 
