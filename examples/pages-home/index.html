@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home</title>
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; margin: 0; display: grid; place-items: center; min-height: 100vh; background: #fffcf0; color: #100f0f; }
+  main { max-width: 32rem; padding: 1.5rem; }
+  @media (prefers-color-scheme: dark) { body { background: #100f0f; color: #cecdc3; } a { color: #3aa99f; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Home</h1>
+  <p id="msg">Nothing to forward here. Replace this page with your own home page.</p>
+</main>
+<script>
+  // Forwarder for GitHub App redirects. GitHub sends people to this address (the first callback URL or the Setup URL)
+  // after they install or change the app on a repo. A site leaves the address it came from in localStorage under
+  // "gh-auth-return" (all pages of one origin share it). This page sends the person back there, keeping GitHub's query.
+  (function () {
+    var q = location.search;
+    if (!q || !/[?&](installation_id|code|error)=/.test(q)) return;
+    var back = null;
+    try { back = localStorage.getItem('gh-auth-return'); } catch (e) {}
+    try {
+      var u = new URL(back);
+      // only ever forward inside this origin, and never back to this page
+      if (u.origin === location.origin && u.pathname !== location.pathname) {
+        document.getElementById('msg').textContent = 'Taking you back…';
+        location.replace(u.origin + u.pathname + q);
+        return;
+      }
+    } catch (e) {}
+    document.getElementById('msg').textContent = 'Signed in to GitHub, but this page does not know which app to return to. Open the app and try again.';
+  })();
+</script>
+</body>
+</html>

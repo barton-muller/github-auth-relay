@@ -73,6 +73,14 @@ curl -X POST https://github-auth-relay.<you>.workers.dev/token -H 'Origin: https
 ```
 `{"error":"bad_request"}` is the right answer. `relay_not_configured` means the Client ID or the secret is missing in the deployed Worker, so check `GITHUB_CLIENT_ID` in `wrangler.toml` and the `GITHUB_CLIENT_SECRET` secret, and redeploy. `origin_not_allowed` means the origin is not in `ALLOWED_ORIGINS`.
 
+### A home page that forwards (for several sites on one address)
+
+GitHub can only send people back to one Setup URL (or the first callback URL). If you host several apps under one GitHub Pages address, make that URL the root of the address, for example `https://<you>.github.io/`, and put the page in [`examples/pages-home/index.html`](examples/pages-home/index.html) there. Create a repo named `<you>.github.io`, add the file as `index.html`, and turn on GitHub Pages for it. Then:
+- Set the GitHub App's **Setup URL** to `https://<you>.github.io/`.
+- Each app writes the address to return to into `localStorage` (`gh-auth-return`) before it opens GitHub's install page. The page reads it and forwards the person there, keeping GitHub's query (`installation_id` and so on). It only forwards inside its own origin.
+
+Go Find Yourself already does this. Without such a page, people land on a 404 after installing.
+
 ### 3. Point a site at it
 
 The site needs three public values: the GitHub App's Client ID, the relay's address, and the app slug. Go Find Yourself reads them from the build variables `VITE_GH_CLIENT_ID`, `VITE_GH_RELAY` and `VITE_GH_APP_SLUG`. Other sites can use any names. See [how Go Find Yourself does it](https://github.com/barton-muller/find-your-self/blob/main/docs/GITHUB-SIGN-IN.md).
