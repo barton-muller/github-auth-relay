@@ -3,7 +3,7 @@
 //
 //   const gh = createClient({ clientId, relay, appSlug });
 //   await gh.handleReturn();                  // call on every page load
-//   if (!gh.signedIn()) gh.signIn();          // redirects to github.com and back
+//   if (!(await gh.signedIn())) gh.signIn();  // redirects to github.com and back
 //   const repos = await gh.repos();           // [{ full, branch }], repos the app is installed on
 //   const f = await gh.read(repo, 'notes.json');          // { text, sha, etag } or null
 //   const g = await gh.read(repo, 'notes.json', undefined, f.etag);   // { notModified: true } when unchanged, and free of rate limit
@@ -24,13 +24,21 @@ const sha256 = async (s) => url64(new Uint8Array(await crypto.subtle.digest('SHA
 const SKEW = 5 * 60e3;
 
 // folder: every path is kept under this folder of the repo, so several apps can share one repo ('my-app' -> my-app/notes.json).
-export function createClient({ clientId, relay, appSlug, name = 'gh-store', folder = '', fetchImpl = (...a) => fetch(...a) }) {
+// storage: where the sign-in is kept, { get(), set(value), del() }, each async. Defaults to localStorage under `<name>:auth`.
+// cleanUrl: the address to show after sign-in returns, default the page's own path and hash.
+export function createClient({ clientId, relay, appSlug, name = 'gh-store', folder = '', storage, cleanUrl = () => location.pathname + location.hash, fetchImpl = (...a) => fetch(...a) }) {
   const AUTH = `${name}:auth`;
   const PENDING = `${name}:pending`;
   const at = (path) => [folder.replace(/^\/+|\/+$/g, ''), path.replace(/^\/+/, '')].filter(Boolean).join('/');
   const here = () => location.origin + location.pathname;
-  const load = () => { try { return JSON.parse(localStorage.getItem(AUTH)); } catch { return null; } };
-  const save = (a) => localStorage.setItem(AUTH, JSON.stringify(a));
+  const store = storage ?? {
+    get: async () => { try { return JSON.parse(localStorage.getItem(AUTH)); } catch { return null; } },
+    set: async (a) => localStorage.setItem(AUTH, JSON.stringify(a)),
+    del: async () => localStorage.removeItem(AUTH),
+  };
+  const load = () => Promise.resolve(store.get()).then((a) => a ?? null).catch(() => null);
+  const save = (a) => Promise.resolve(store.set(a));
+  let refreshing = null;
   const gh = (token, path, init = {}) =>
     fetchImpl(`${API}${path}`, { ...init, cache: 'no-store', headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', ...init.headers } });
 
@@ -48,9 +56,11 @@ export function createClient({ clientId, relay, appSlug, name = 'gh-store', fold
   }
 
   const api = {
-    signedIn: () => !!load(),
-    login: () => load()?.login ?? null,
-    signOut: () => localStorage.removeItem(AUTH),
+    // The stored sign-in { login, access, expiresAt, refresh, refreshExpiresAt }, or null.
+    auth: load,
+    signedIn: async () => !!(await load()),
+    login: async () => (await load())?.login ?? null,
+    signOut: () => Promise.resolve(store.del()).catch(() => {}),
 
     // Opens GitHub. PKCE ties the returned code to this browser.
     async signIn() {
@@ -60,12 +70,12 @@ export function createClient({ clientId, relay, appSlug, name = 'gh-store', fold
       location.assign(`https://github.com/login/oauth/authorize?${q}`);
     },
 
-    // Call on every load. Finishes a sign-in when the URL holds ?code, and cleans the URL. Returns true if it signed in.
+    // Call on every load. Finishes a sign-in when the URL holds ?code, and cleans the URL. Returns the new sign-in, or null.
     async handleReturn() {
       const q = new URLSearchParams(location.search);
-      const clean = () => history.replaceState(null, '', location.pathname + location.hash);
-      if (q.has('installation_id')) { clean(); return false; }
-      if (!q.has('code') && !q.has('error')) return false;
+      const clean = () => history.replaceState(null, '', cleanUrl());
+      if (q.has('installation_id')) { clean(); return null; }
+      if (!q.has('code') && !q.has('error')) return null;
       const raw = sessionStorage.getItem(PENDING);
       sessionStorage.removeItem(PENDING);
       const pending = raw ? JSON.parse(raw) : null;
@@ -74,21 +84,22 @@ export function createClient({ clientId, relay, appSlug, name = 'gh-store', fold
       if (!pending || pending.state !== q.get('state')) throw new Error('Sign-in was not started in this browser. Try again.');
       const t = await viaRelay('/token', { code: q.get('code'), redirect_uri: pending.redirect, code_verifier: pending.verifier });
       const u = await gh(t.access, '/user');
-      save({ ...t, login: u.ok ? (await u.json()).login : 'GitHub user' });
-      return true;
+      const a = { ...t, login: u.ok ? (await u.json()).login : 'GitHub user' };
+      await save(a);
+      return a;
     },
 
     // A valid access token, renewed through the relay shortly before it expires. Null when signed out.
     async token() {
-      const a = load();
+      const a = await load();
       if (!a) return null;
       if (a.expiresAt - SKEW > Date.now()) return a.access;
-      if (!a.refresh || (a.refreshExpiresAt && a.refreshExpiresAt < Date.now())) { api.signOut(); return null; }
-      try {
-        const n = { ...(await viaRelay('/refresh', { refresh_token: a.refresh })), login: a.login };
-        save(n);
-        return n.access;
-      } catch { return null; }
+      if (!a.refresh || (a.refreshExpiresAt && a.refreshExpiresAt < Date.now())) { await api.signOut(); return null; }
+      refreshing ??= viaRelay('/refresh', { refresh_token: a.refresh })
+        .then(async (t) => { const n = { ...t, login: a.login }; await save(n); return n; })
+        .catch(() => null)
+        .finally(() => { refreshing = null; });
+      return (await refreshing)?.access ?? null;
     },
 
     // GitHub's page for choosing repos. state brings the person back to this page through the relay's /return route.

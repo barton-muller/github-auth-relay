@@ -24,5 +24,16 @@
         "description": "The sites that may use this relay, comma-separated, each as scheme and host with no path and no trailing slash. Example: `https://you.github.io,https://example.com`."
       }
     }
-  }
+  },
+  "exports": {
+    "./client": {
+      "types": "./client/ghstore.d.ts",
+      "default": "./client/ghstore.js"
+    }
+  },
+  "files": [
+    "client/ghstore.js",
+    "client/ghstore.d.ts",
+    "index.js"
+  ]
 }

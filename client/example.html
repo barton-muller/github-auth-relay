@@ -48,7 +48,7 @@ async function load() {
 }
 
 $('signin').onclick = () => gh.signIn();
-$('out-btn').onclick = () => { gh.signOut(); location.reload(); };
+$('out-btn').onclick = async () => { await gh.signOut(); location.reload(); };
 $('load').onclick = () => load().catch((e) => say(e.message));
 $('save').onclick = async () => {
   try {
@@ -60,10 +60,10 @@ $('save').onclick = async () => {
 };
 
 try { await gh.handleReturn(); } catch (e) { say(e.message); }
-if (!gh.signedIn()) $('in').hidden = false;
+if (!(await gh.signedIn())) $('in').hidden = false;
 else {
   $('out').hidden = false;
-  $('who').textContent = gh.login();
+  $('who').textContent = await gh.login();
   $('install').href = gh.installUrl();
   const repos = await gh.repos().catch((e) => (say(e.message), []));
   $('repo').replaceChildren(...repos.map((r) => new Option(r.full, r.full)));

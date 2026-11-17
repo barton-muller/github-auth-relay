@@ -130,7 +130,7 @@ Go Find Yourself has its own, app-specific version in [`src/auth.ts`](https://gi
 
 ## Test
 
-`npm test` runs 21 checks on the relay (`test.mjs`) and 17 on the client (`client/test.mjs`), both with a pretend GitHub. It needs Node 18 or newer and no network.
+`npm test` runs 21 checks on the relay (`test.mjs`) and 19 on the client (`client/test.mjs`), both with a pretend GitHub. It needs Node 18 or newer and no network.
 
 ## Licence
 

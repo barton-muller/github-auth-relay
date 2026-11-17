@@ -45,7 +45,7 @@ const q = new URL(L.went).searchParams;
 check('signIn: PKCE challenge and client id', q.get('code_challenge_method') === 'S256' && q.get('client_id') === 'Iv1.x' && q.get('code_challenge').length === 43);
 const state = q.get('state');
 loc = `https://me.github.io/app/?code=abc&state=${state}`;
-check('handleReturn: signs in', (await gh.handleReturn()) && gh.signedIn() && gh.login() === 'me' && loc === 'https://me.github.io/app/');
+check('handleReturn: signs in', (await gh.handleReturn())?.login === 'me' && (await gh.signedIn()) && (await gh.login()) === 'me' && loc === 'https://me.github.io/app/');
 check('handleReturn: verifier sent to relay', JSON.parse(calls.find((c) => c.url.endsWith('/token')).init.body).code_verifier.length === 64);
 loc = 'https://me.github.io/app/?code=abc&state=wrong';
 sessionStorage.setItem('gh-store:pending', JSON.stringify({ verifier: 'v', state: 'right', redirect: 'x' }));
@@ -67,8 +67,19 @@ const a = JSON.parse(store.get('gh-store:auth'));
 a.expiresAt = Date.now() + 1000;
 store.set('gh-store:auth', JSON.stringify(a));
 check('token: refreshed near expiry', (await gh.token()) === 'ghu_2');
-gh.signOut();
-check('signOut', !gh.signedIn() && (await gh.token()) === null);
+await gh.signOut();
+check('signOut', !(await gh.signedIn()) && (await gh.token()) === null);
+
+const mem2 = new Map();
+const gh2 = createClient({ clientId: 'Iv1.x', relay: 'https://relay.example/', appSlug: 'x', fetchImpl, cleanUrl: () => '/app/#/settings',
+  storage: { get: async () => mem2.get('a') ?? null, set: async (v) => mem2.set('a', v), del: async () => mem2.delete('a') } });
+await gh2.signIn();
+loc = `https://me.github.io/app/?code=abc&state=${new URL(L.went).searchParams.get('state')}`;
+await gh2.handleReturn();
+check('custom storage and cleanUrl', mem2.get('a')?.access === 'ghu_1' && loc === 'https://me.github.io/app/#/settings' && (await gh2.auth()).login === 'me');
+mem2.get('a').expiresAt = 0;
+const toks = await Promise.all([gh2.token(), gh2.token()]);
+check('token: concurrent refreshes share one request', toks[0] === 'ghu_2' && toks[1] === 'ghu_2' && calls.filter((c) => c.url.endsWith('/refresh')).length === 2);
 
 console.log(fails ? `${fails} failed` : 'all passed');
 process.exit(fails ? 1 : 0);

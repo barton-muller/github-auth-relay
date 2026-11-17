@@ -11,7 +11,7 @@ import { createClient, Conflict } from './ghstore.js';
 
 const gh = createClient({ clientId, relay, appSlug, folder: 'my-app' });
 await gh.handleReturn();                       // every page load
-if (!gh.signedIn()) gh.signIn();               // redirect to github.com and back
+if (!(await gh.signedIn())) gh.signIn();       // redirect to github.com and back
 
 const [repo] = await gh.repos();               // repos the app is installed on: [{ full, branch }]
 const f = await gh.read(repo.full, 'data.json');            // { text, sha, etag } or null
@@ -23,7 +23,17 @@ await gh.remove(repo.full, 'data.json', f.sha);             // delete
 
 If someone else wrote the file in between, `write` throws `Conflict`. Read again, merge, write again. If `repos()` is empty, send the person to `gh.installUrl()`.
 
-The token is kept in `localStorage` under `<name>:auth` (`name` defaults to `gh-store`). Change `name` per app if several apps share an origin, or pass your own storage if you want the token in IndexedDB.
+The sign-in is kept in `localStorage` under `<name>:auth` (`name` defaults to `gh-store`). Change `name` per app if several apps share an origin. To keep it elsewhere, such as IndexedDB, pass `storage: { get, set, del }` (each async). `cleanUrl` sets the address shown after sign-in returns. `gh.auth()` gives the stored `{ login, access, expiresAt, refresh, refreshExpiresAt }`.
+
+## Use as a dependency
+
+```
+npm install github:barton-muller/pages-storage#<commit>
+```
+```js
+import { createClient, Conflict } from 'pages-storage/client';
+```
+Types are in `client/ghstore.d.ts`.
 
 ## One folder per app
 
