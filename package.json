@@ -1,0 +1,15 @@
+{
+  "name": "github-auth-relay",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Token relay for Sign in with GitHub on static sites (Cloudflare Worker)",
+  "scripts": {
+    "test": "node test.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  },
+  "license": "MIT"
+}
