@@ -65,6 +65,12 @@ npx wrangler deploy
 
 The deploy gives you the relay's address, such as `https://github-auth-relay.<you>.workers.dev`. Open it in a browser. `{"error":"method_not_allowed"}` means it is running.
 
+To check the settings, send a POST from an allowed origin (a computer is easiest):
+```
+curl -X POST https://github-auth-relay.<you>.workers.dev/token -H 'Origin: https://<you>.github.io' -H 'Content-Type: application/json' -d '{}'
+```
+`{"error":"bad_request"}` is the right answer. `relay_not_configured` means the Client ID or the secret is missing in the deployed Worker, so check `GITHUB_CLIENT_ID` in `wrangler.toml` and the `GITHUB_CLIENT_SECRET` secret, and redeploy. `origin_not_allowed` means the origin is not in `ALLOWED_ORIGINS`.
+
 ### 3. Point a site at it
 
 The site needs three public values: the GitHub App's Client ID, the relay's address, and the app slug. Go Find Yourself reads them from the build variables `VITE_GH_CLIENT_ID`, `VITE_GH_RELAY` and `VITE_GH_APP_SLUG`. Other sites can use any names. See [how Go Find Yourself does it](https://github.com/barton-muller/find-your-self/blob/main/docs/GITHUB-SIGN-IN.md).
