@@ -1,2 +1,0 @@
-Hello from the test repo.
-Edit me on the example page, then look at the commit on GitHub.
