@@ -44,7 +44,7 @@
         Sign in with GitHub
       </button>
     </div>
-    <p class="note warn"><b>This page can read and write the repos you choose.</b> Signing in installs a GitHub App on the repos you pick, and this page, or anyone who controls it, can then change any file in them. Pick a test repo, not one you care about. You can remove the app from a repo at any time in your GitHub settings.</p>
+    <p class="note warn"><b>This page can read and write the repos you choose.</b> Signing in installs a GitHub App on the repos you pick, and this page, or anyone who controls it, can then change any file in them. <b>Use a test repo, not one you care about.</b> After you sign in, one button creates a private one with a few sample files. You can remove the app from a repo at any time in your GitHub settings.</p>
     <p class="mut" id="cfg-note" hidden>Real sign-in is off until you fill in <code>CONFIG</code> in this file.</p>
     <hr style="border:0;border-top:1px solid var(--line);margin:1rem 0">
     <div class="row"><button id="demo">Try the demo</button></div>
@@ -59,8 +59,9 @@
     </div>
     <div class="row">
       <select id="repo" class="grow" aria-label="Repo"></select>
-      <a id="install" class="mut" href="#">Choose repos</a>
+      <button id="mkrepo">Create a private test repo</button>
     </div>
+    <p class="mut"><a id="install" href="#">Choose other repos</a> to let this page use repos you already have.</p>
     <p id="crumbs"></p>
     <ul id="files"></ul>
     <div class="row">
@@ -152,6 +153,27 @@ $('demo').onclick = async () => { localStorage.setItem(MODE, 'demo'); await crea
 $('reset').onclick = async () => { await gh.reset(); location.reload(); };
 $('signout').onclick = async () => { await gh.signOut(); localStorage.removeItem(MODE); location.reload(); };
 $('repo').onchange = () => open('');
+const fillRepos = async (select) => {
+  const repos = await gh.repos();
+  $('repo').replaceChildren(...repos.map((r) => new Option(r.full, r.full)));
+  if (select && repos.some((r) => r.full === select)) $('repo').value = select;
+  return repos;
+};
+$('mkrepo').onclick = async () => {
+  $('mkrepo').disabled = true; say('Creating a private repo…');
+  try {
+    const made = await gh.createRepo('pages-storage-test', { description: 'Throwaway repo for the pages-storage example' });
+    const repos = await fillRepos(made.full);
+    if (!repos.some((r) => r.full === made.full)) {
+      say(`Created ${made.full}, but the app cannot see it yet. Use "Choose other repos" and add it.`);
+      return;
+    }
+    say('Adding sample files…');
+    for (const [p, text] of Object.entries(DEMO_FILES)) if (p !== 'README.txt') await gh.write(made.full, p, text);
+    await open('');
+    say(`Created ${made.full} with a few sample files.`);
+  } catch (e) { say(e.message); } finally { $('mkrepo').disabled = false; }
+};
 $('reload').onclick = () => edit(file.path);
 $('save').onclick = async () => {
   try { const path = file.path; file.sha = await gh.write($('repo').value, path, $('text').value, file.sha); await open(dir); await edit(path); say('Saved.'); } catch (e) { fail(e); }
@@ -182,9 +204,8 @@ if (!(await gh.signedIn())) {
   $('demo-tag').hidden = !demo;
   $('demo-note').hidden = !demo; $('real-note').hidden = demo;
   if (demo) $('install').hidden = true; else $('install').href = gh.installUrl();
-  const repos = await gh.repos().catch((e) => (say(e.message), []));
-  $('repo').replaceChildren(...repos.map((r) => new Option(r.full, r.full)));
-  if (repos.length) await open(''); else say('Install the app on a repo first (Choose repos).');
+  const repos = await fillRepos().catch((e) => (say(e.message), []));
+  if (repos.length) await open(''); else say('No repos yet. Create a private test repo above, or choose repos you already have.');
 }
 </script>
 </body>

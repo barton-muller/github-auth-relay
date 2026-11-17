@@ -80,7 +80,8 @@ On github.com open *Settings, Developer settings, GitHub Apps, New GitHub App*.
 | Setup URL | Leave empty for now. After step 2, set it to `<relay address>/return`. |
 | Redirect on update | Ticked, so adding or removing repos also returns people to the site. |
 | Webhook, Active | Unticked. |
-| Repository permissions, Contents | **Read and write.** Nothing else. |
+| Repository permissions, Contents | **Read and write.** |
+| Repository permissions, Repository creation | **Read and write.** Optional. It lets your app create a private repo for the person with one call, `createRepo()`, so they do not have to leave your site. Skip it if people always bring a repo of their own. People who already installed the app are asked to approve the new permission. |
 | Where can this GitHub App be installed | *Only on this account*, or *Any account* if other people should use it. |
 
 Create it. On the app's page copy the **Client ID**, which is public, and generate a **client secret**, which is shown once. You do not need a private key, so skip the JWT pages.
@@ -152,6 +153,7 @@ const sha = await gh.write('you/data', 'data.json', JSON.stringify(data), file?.
 | `signIn()`, `handleReturn()`, `signOut()` | The sign-in flow. `handleReturn()` returns the new sign-in, or `null`. |
 | `signedIn()`, `login()`, `auth()`, `token()` | Current state. `token()` renews the access token when it is about to expire. |
 | `repos()`, `installUrl()` | Repos the app is installed on, and GitHub's page to change that. |
+| `createRepo(name, { description?, isPrivate? })` | Creates a private repo (with a first commit) for the person and returns `{ full, branch }`. Needs the *Repository creation* permission. Afterwards check that `repos()` lists it. If it does not, the app still has to be installed on the new repo, so send the person to `installUrl()`. |
 | `read(repo, path, branch?, etag?)` | `{ text, sha, etag }`, or `null` if missing. With the `etag` of an earlier read you get `{ notModified: true }` for an unchanged file, which GitHub does not count against the rate limit. |
 | `list(repo, dir?, branch?)` | The entries of a folder: `{ name, path, type, sha, size }`. |
 | `write(repo, path, text, sha?, branch?, message?)` | Creates or replaces a file and returns its new `sha`. Pass the `sha` of the version you read. A stale one throws `Conflict`. |
@@ -202,7 +204,7 @@ Options of `createClient`:
 - The relay refuses any origin not in `ALLOWED_ORIGINS` and any redirect address outside those origins. Answers are `Cache-Control: no-store`.
 - Tokens pass through the relay in memory only. If you change the code, do not log or store them.
 - PKCE ties each code to the browser that asked for it, so a stolen code is useless.
-- **Tell people what a site can do.** An app installed on a repo can read and write every file in it, and so can the site that holds the token. The example page says so before sign-in. Do the same, and suggest a separate repo for the data.
+- **Tell people what a site can do.** An app installed on a repo can read and write every file in it, and so can the site that holds the token. The example page says so before sign-in and offers to create a private test repo. Do the same, and suggest a separate repo for the data.
 - The token lives in the browser's storage. Treat the site like any page that holds a login: no third-party scripts you do not trust.
 - To cut everyone off at once, generate a new client secret in the GitHub App and update `GITHUB_CLIENT_SECRET`.
 - Wildcard callback URLs let any page under that address receive codes. Use them only for addresses you fully control.
@@ -226,7 +228,8 @@ Options of `createClient`:
 | `redirect_uri_mismatch` (from GitHub) | The site's address is not in the app's Callback URLs. Add it with the trailing `/`, or turn on wildcard matching. |
 | 404 after installing the app on a repo | The Setup URL is wrong. Set it to `<relay address>/return`. |
 | After installing, you land on the app page, not your site | The install link lacks `state`, or the site's origin is not in `ALLOWED_ORIGINS`. Use `gh.installUrl()`. |
-| `repos()` returns an empty list | The app is not installed on any repo yet. Send the person to `gh.installUrl()`. |
+| `repos()` returns an empty list | The app is not installed on any repo yet. Send the person to `gh.installUrl()`, or call `createRepo()`. |
+| `createRepo` says the app is not allowed | The GitHub App lacks the *Repository creation* permission. Add it in the app's *Permissions & events*, then approve the change on your own installation. |
 | `Conflict` on write | The file changed since it was read. Read again, merge, write again. |
 | `Sign-in was not started in this browser` | The return came back in a different browser or after the tab's storage was cleared. Try again in one browser. |
 | Signed in on one device, not on another | Sign-in is stored per browser and origin. Sign in on each device. |

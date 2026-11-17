@@ -32,14 +32,17 @@ check('list: unseen folder is empty', (await gh.list(repo.full, 'nope')).length 
 await gh.remove(repo.full, 'a.txt', s1).then(() => check('remove: stale sha conflicts', false), (e) => check('remove: stale sha conflicts', e instanceof Conflict));
 check('remove', (await gh.remove(repo.full, 'a.txt', s2)) === true && (await gh.read(repo.full, 'a.txt')) === null);
 check('remove: already gone', (await gh.remove(repo.full, 'a.txt', s2)) === false);
-check('stored under the folder', Object.keys(JSON.parse(store.get('gh-store:demo:files'))).every((k) => k.startsWith('app/')));
+check('stored under the folder', Object.keys(JSON.parse(store.get('gh-store:demo:data')).files['demo/my-data']).every((k) => k.startsWith('app/')));
+const made = await gh.createRepo('fresh', { description: 'hi' });
+check('createRepo: new repo appears with a README, separate from the others', made.full === 'demo-user/fresh' && (await gh.repos()).length === 2 && (await gh.list(made.full, '')).length === 1 && (await gh.read(repo.full, 'README.md')) === null);
+await gh.createRepo('fresh').then(() => check('createRepo: duplicate refused', false), () => check('createRepo: duplicate refused', true));
 await gh.signOut();
 check('signOut', !(await gh.signedIn()));
 await gh.signIn();
 check('signing in again keeps edits and does not reseed', (await gh.read(repo.full, 'a.txt')) === null && (await gh.read(repo.full, 'seed.txt')) !== null);
 await gh.reset();
 await gh.signIn();
-check('reset then sign in reseeds', (await gh.read(repo.full, 'seed.txt'))?.text === 'planted');
+check('reset then sign in reseeds and forgets new repos', (await gh.read(repo.full, 'seed.txt'))?.text === 'planted' && (await gh.repos()).length === 1);
 
 console.log(fails ? `${fails} failed` : 'all passed');
 process.exit(fails ? 1 : 0);

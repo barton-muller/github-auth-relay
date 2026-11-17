@@ -16,7 +16,7 @@ One GitHub App and one relay serve every site you list. All pages under one GitH
 
 ## Set up
 
-1. **Make a GitHub App.** It gives you a Client ID and a client secret. Takes 5 minutes. [Fields to fill in](docs/GUIDE.md#1-make-a-github-app).
+1. **Make a GitHub App.** It gives you a Client ID and a client secret. Takes 5 minutes. Optional: allow *Repository creation*, so your app can create a private repo for a new user with `createRepo()`. [Fields to fill in](docs/GUIDE.md#1-make-a-github-app).
 2. **Deploy the relay.** This button copies the repo into your GitHub account and deploys it to Cloudflare. It asks for the Client ID, the client secret and the list of sites that may use it. Then put the relay's address into the GitHub App's Setup URL as `<relay address>/return`.
 
    [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/barton-muller/pages-storage)
@@ -58,7 +58,7 @@ The **[full guide](docs/GUIDE.md)** says what this is good for, how it works in 
 
 ## Test
 
-`npm test` runs 26 checks on the relay, 19 on the client and 19 on the demo backend. They use a pretend GitHub and need Node 18 or newer, no network.
+`npm test` runs 26 checks on the relay, 22 on the client and 21 on the demo backend. They use a pretend GitHub and need Node 18 or newer, no network.
 
 ## Publishing the example
 

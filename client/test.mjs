@@ -27,6 +27,12 @@ const fetchImpl = async (url, init = {}) => {
     file.sha = 'sha' + (Number(file.sha.slice(3)) + 1);
     return ok({ content: { sha: file.sha } });
   }
+  if (url.endsWith('/user/repos') && init.method === 'POST') {
+    const b = JSON.parse(init.body);
+    if (b.name === 'taken') return ok({}, 422);
+    if (b.name === 'denied') return ok({}, 403);
+    return ok({ full_name: `me/${b.name}`, default_branch: 'main', echo: b });
+  }
   if (url.endsWith('/contents/notes-app')) return ok([{ name: 'a.txt', path: 'notes-app/a.txt', type: 'file', sha: 's', size: 3, extra: 1 }, { name: 'sub', path: 'notes-app/sub', type: 'dir', sha: 'd', size: 0 }]);
   if (url.endsWith('/contents/empty')) return ok({}, 404);
   if (url.includes('/contents/') && init.headers?.['If-None-Match'] === '"v1"') return new Response(null, { status: 304 });
@@ -57,6 +63,11 @@ check('read: utf-8 and sha', f.text === 'héllo' && f.sha === 'sha1');
 check('read: etag returned, path under the folder', f.etag === '"v1"' && calls.at(-1).url.endsWith('/contents/notes-app/a.txt'));
 check('read: 304 gives notModified', (await gh.read('me/data', 'a.txt', undefined, '"v1"')).notModified === true);
 check('list: entries trimmed', JSON.stringify((await gh.list('me/data', '')).map((x) => [x.name, x.type])) === '[["a.txt","file"],["sub","dir"]]');
+const made = await gh.createRepo('fresh', { description: 'x' });
+const sent = JSON.parse(calls.findLast((c) => c.url.endsWith('/user/repos')).init.body);
+check('createRepo: private with an initial commit', made.full === 'me/fresh' && made.branch === 'main' && sent.private === true && sent.auto_init === true && sent.name === 'fresh');
+await gh.createRepo('taken').then(() => check('createRepo: name taken', false), (e) => check('createRepo: name taken', /already exists/.test(e.message)));
+await gh.createRepo('denied').then(() => check('createRepo: permission missing', false), (e) => check('createRepo: permission missing', /Repository creation/.test(e.message)));
 check('read: missing is null', (await gh.read('me/data', 'missing.txt')) === null);
 const s2 = await gh.write('me/data', 'a.txt', 'wörld', f.sha);
 check('write: new sha, text stored, under the folder', s2 === 'sha2' && file.text === 'wörld' && calls.at(-1).url.endsWith('/contents/notes-app/a.txt'));

@@ -34,6 +34,7 @@ export interface Client {
   token(): Promise<string | null>;
   installUrl(): string;
   repos(): Promise<RepoChoice[]>;
+  createRepo(name: string, options?: { description?: string; isPrivate?: boolean }): Promise<RepoChoice>;
   read(repo: string, path: string, branch?: string, etag?: string | null): Promise<{ text: string; sha: string; etag: string | null } | { notModified: true; etag: string } | null>;
   list(repo: string, dir?: string, branch?: string): Promise<FileInfo[]>;
   write(repo: string, path: string, text: string, sha?: string, branch?: string, message?: string): Promise<string>;

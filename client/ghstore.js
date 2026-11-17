@@ -118,6 +118,19 @@ export function createClient({ clientId, relay, appSlug, name = 'gh-store', fold
       return out;
     },
 
+    // Creates a private repo for the signed-in person and returns { full, branch }. Needs the "Repository creation"
+    // permission (write) on the GitHub App. The app may still need installing on the new repo: check repos() afterwards.
+    async createRepo(name, { description = '', isPrivate = true } = {}) {
+      const t = await api.token();
+      if (!t) throw new Error('Not signed in');
+      const r = await gh(t, '/user/repos', { method: 'POST', body: JSON.stringify({ name, description, private: isPrivate, auto_init: true }) });
+      if (r.status === 422) throw new Error(`A repo called ${name} already exists, or the name is not allowed.`);
+      if (r.status === 403 || r.status === 404) throw new Error('This app is not allowed to create repos. Give the GitHub App the "Repository creation" permission, or create the repo on github.com.');
+      if (!r.ok) throw new Error(`GitHub ${r.status}`);
+      const j = await r.json();
+      return { full: j.full_name, branch: j.default_branch };
+    },
+
     // { text, sha, etag } or null when the file does not exist. Pass the etag of an earlier read to get
     // { notModified: true, etag } instead when nothing changed; GitHub does not count that against the rate limit.
     async read(repo, path, branch, etag) {
