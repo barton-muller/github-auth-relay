@@ -1,4 +1,4 @@
-# github-auth-relay
+# pages-storage
 
 One small Cloudflare Worker that lets **any number of static sites** offer **Sign in with GitHub**, on one GitHub App, with no server of your own.
 
@@ -61,7 +61,7 @@ Create it. On the app's page copy the **Client ID** (public), and generate a **c
 
 ### 2. Deploy the Worker
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/barton-muller/github-auth-relay)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/barton-muller/pages-storage)
 
 The button copies this repo into your GitHub account, deploys it with Workers Builds, and asks for the three settings:
 
