@@ -10,7 +10,7 @@
 
 One GitHub App and one relay serve every site you list. All pages under one GitHub Pages address share a sign-in. Each extra domain you add asks for one more sign-in, then works the same. Several apps, or several screens of one app, can use the same repo, so a phone app, a dashboard and an AI agent can all work on the same data.
 
-**[Try the live example](https://barton-muller.github.io/pages-storage/).** Sign in with GitHub, or use the demo, which needs no account. It browses a repo and creates, edits and deletes text files. The source is [`client/example.html`](client/example.html), about 150 lines.
+**[Try the live example](https://barton-muller.github.io/pages-storage/).** Sign in with GitHub, or use the demo, which needs no account. It browses a repo and creates, edits and deletes text files. The source is [`client/example.html`](client/example.html), about 160 lines.
 
 ## Set up
 

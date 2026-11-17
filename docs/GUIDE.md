@@ -23,7 +23,7 @@ A static site, such as one on GitHub Pages, has no backend. The usual ways to ke
 pages-storage uses something every developer, and a growing number of other people, already has: a GitHub account. The data goes in a repo the person owns. You never hold it, and neither does the relay.
 
 What you get:
-- **No server and no database to run.** The relay is a 150-line function on Cloudflare's free tier. It holds one secret and no data.
+- **No server and no database to run.** The relay is a function of about 110 lines on Cloudflare's free tier. It holds one secret and no data.
 - **Identity for free.** "Sign in with GitHub" and no passwords.
 - **The person owns the data.** It is files in their repo, with history, diffs and revert. They can read it, edit it, or take it elsewhere.
 - **Several interfaces on one set of data.** A phone app, a dashboard, a script and an AI agent can all read and edit the same files. The agent just needs the repo.
