@@ -40,7 +40,9 @@ On github.com open *Settings, Developer settings, GitHub Apps, New GitHub App*.
 | Homepage URL | One of your sites |
 | Callback URL | The address of each site that will use the relay, with the trailing `/`. You can add several. For all pages of one GitHub Pages account, add `https://<you>.github.io/` and turn on wildcard matching for it. Wildcard matching lets any page under that address receive sign-in codes, so use it only when you control every page there. |
 | Expire user authorization tokens | Ticked |
-| Request user authorization (OAuth) during installation | Ticked |
+| Request user authorization (OAuth) during installation | **Unticked.** If ticked, GitHub sends people to the *first* callback URL after installing the app, which may not be the site they came from. |
+| Setup URL | The address of your site (with the trailing `/`). GitHub sends people here after they install the app on a repo. |
+| Redirect on update | Ticked, so adding or removing repos also returns people to the site |
 | Webhook, Active | Unticked |
 | Repository permissions, Contents | **Read and write** |
 | Where can this GitHub App be installed | *Only on this account*, or *Any account* if other people should use it |
