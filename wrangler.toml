@@ -4,7 +4,7 @@ compatibility_date = "2025-01-01"
 
 [vars]
 # Public value from your GitHub App's settings page (it starts with "Iv").
-GITHUB_CLIENT_ID = ""
+GITHUB_CLIENT_ID = "Iv23li69aGBxYokv1i8f"
 # Comma-separated origins (scheme + host, no path, no trailing slash) of the sites that may use this relay.
 # One entry covers every page under it, for example every GitHub Pages project of one account.
 ALLOWED_ORIGINS = "https://barton-muller.github.io"
